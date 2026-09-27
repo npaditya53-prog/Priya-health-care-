@@ -5,6 +5,8 @@ import {
   resetFirestoreAppointmentCounter,
   syncAppointmentDocumentToFirestore,
   syncClinicDocumentToFirestore,
+  syncDoctorDocumentToFirestore,
+  getDoctorFromFirestore,
   deleteAppointmentFromFirestore,
   syncContactMessageToFirestore,
   deleteContactMessageFromFirestore,
@@ -495,7 +497,25 @@ export const DoctorRepository = {
       current.id
     );
 
-    return this.get();
+    const updated = this.get();
+
+    // Sync to Firestore
+    syncDoctorDocumentToFirestore({
+      name: updated.name,
+      designation: updated.designation,
+      bio: updated.bio,
+      qualifications: updated.qualifications,
+      experience: updated.experience,
+      specialties: updated.specialties,
+      registration: updated.registration,
+      consultation_info: updated.consultation_info,
+      is_published: updated.is_published,
+      image_url: updated.image_url,
+      phone: updated.phone,
+      email: updated.email,
+    }).catch(() => {});
+
+    return updated;
   }
 };
 

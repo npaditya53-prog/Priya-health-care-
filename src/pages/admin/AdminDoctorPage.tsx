@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api, DoctorData } from '../../lib/api';
 import { useClinic } from '../../context/ClinicContext';
+import { syncDoctorToFirestore } from '../../lib/firebase';
 
 export const AdminDoctorPage: React.FC = () => {
   const { reloadAll } = useClinic();
@@ -81,10 +82,28 @@ export const AdminDoctorPage: React.FC = () => {
     setSaving(true);
     setFeedback(null);
 
+    const isPubVal = formData.is_published ? 1 : 0;
     const res = await api.updateDoctor({
       ...formData,
-      is_published: formData.is_published ? 1 : 0,
+      is_published: isPubVal,
     });
+
+    // Also synchronize to Firestore document doctor/doctor-gultun-paswan directly
+    syncDoctorToFirestore({
+      name: formData.name || 'Dr. Gultun Paswan',
+      designation: formData.designation || 'Lead Consulting Physician',
+      bio: formData.bio || '',
+      qualifications: formData.qualifications || '',
+      experience: formData.experience || '',
+      specialties: formData.specialties || '',
+      registration: formData.registration || '',
+      consultation_info: formData.consultation_info || '',
+      is_published: Boolean(formData.is_published),
+      image_url: formData.image_url || '',
+      phone: formData.phone || '',
+      email: formData.email || '',
+    }).catch((err) => console.warn('Admin Firestore doctor sync notice:', err));
+
     setSaving(false);
 
     if (res.success && res.data) {

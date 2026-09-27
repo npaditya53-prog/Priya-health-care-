@@ -29,6 +29,7 @@ import {
   createRateLimiter,
   AuthenticatedRequest,
 } from './src/server/auth.js';
+import { getDoctorFromFirestore, syncDoctorDocumentToFirestore } from './src/server/firestore.js';
 
 import {
   LoginSchema,
@@ -828,14 +829,26 @@ app.delete('/api/services/:id', requireAuth, (req: AuthenticatedRequest, res: Re
 // 5. DOCTOR & CLINIC APIS
 // ============================================================================
 
-app.get('/api/doctor', (_req: Request, res: Response) => {
-  const doctor = DoctorRepository.get();
+app.get('/api/doctor', async (_req: Request, res: Response) => {
+  let doctor = DoctorRepository.get();
+  if (!doctor || !doctor.name) {
+    const fsDoctor = await getDoctorFromFirestore();
+    if (fsDoctor) {
+      doctor = fsDoctor as any;
+    }
+  }
   return res.json({ success: true, data: doctor });
 });
 
 // Admin Doctor Endpoints
-app.get('/api/admin/doctor', requireAuth, (_req: AuthenticatedRequest, res: Response) => {
-  const doctor = DoctorRepository.get();
+app.get('/api/admin/doctor', requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
+  let doctor = DoctorRepository.get();
+  if (!doctor || !doctor.name) {
+    const fsDoctor = await getDoctorFromFirestore();
+    if (fsDoctor) {
+      doctor = fsDoctor as any;
+    }
+  }
   return res.json({ success: true, data: doctor });
 });
 

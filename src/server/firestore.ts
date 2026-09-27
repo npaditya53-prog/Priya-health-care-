@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, runTransaction, setDoc, deleteDoc, Firestore } from 'firebase/firestore';
+import { getFirestore, doc, runTransaction, setDoc, deleteDoc, getDoc, Firestore } from 'firebase/firestore';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -319,4 +319,76 @@ export async function deleteContactMessageFromFirestore(id: string) {
     console.warn('[Firestore] Contact message delete notice:', err);
   }
 }
+
+/**
+ * Sync Dr. Gultun Paswan profile document to Firestore /doctor/doctor-gultun-paswan
+ */
+export async function syncDoctorDocumentToFirestore(data: {
+  name: string;
+  designation: string;
+  bio?: string | null;
+  qualifications?: string | null;
+  experience?: string | null;
+  specialties?: string | null;
+  registration?: string | null;
+  consultation_info?: string | null;
+  is_published?: number | boolean | null;
+  image_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}) {
+  const db = getBackendFirestore();
+  if (!db) return;
+  try {
+    const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
+    const isPublishedBool =
+      data.is_published !== undefined && data.is_published !== null
+        ? typeof data.is_published === 'boolean'
+          ? data.is_published
+          : Number(data.is_published) !== 0
+        : true;
+
+    await setDoc(
+      docRef,
+      {
+        id: 'doctor-gultun-paswan',
+        name: data.name || 'Dr. Gultun Paswan',
+        designation: data.designation || 'Lead Consulting Physician',
+        bio: data.bio || '',
+        qualifications: data.qualifications || '',
+        experience: data.experience || '',
+        specialties: data.specialties || '',
+        registration: data.registration || '',
+        consultation_info: data.consultation_info || '',
+        is_published: isPublishedBool,
+        image_url: data.image_url || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    console.log('[Firestore] Synced doctor profile doc doctor-gultun-paswan');
+  } catch (err) {
+    console.warn('[Firestore] Doctor doc sync notice:', err);
+  }
+}
+
+/**
+ * Fetch Dr. Gultun Paswan profile from Firestore
+ */
+export async function getDoctorFromFirestore() {
+  const db = getBackendFirestore();
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, 'doctor', 'doctor-gultun-paswan'));
+    if (snap.exists()) {
+      return snap.data();
+    }
+  } catch (err) {
+    console.warn('[Firestore] Doctor fetch notice:', err);
+  }
+  return null;
+}
+
 

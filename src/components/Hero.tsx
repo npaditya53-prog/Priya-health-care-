@@ -8,97 +8,225 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
+  Building2,
+  MapPin,
+  Stethoscope,
+  Activity,
+  Heart,
 } from 'lucide-react';
 import { useClinic } from '../context/ClinicContext';
 
 export const Hero: React.FC = () => {
-  const { doctor, settings } = useClinic();
+  const { doctor, clinic, settings } = useClinic();
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-sky-50/70 via-white to-slate-50 py-16 lg:py-24 border-b border-slate-200">
+    <section className="relative overflow-hidden bg-gradient-to-b from-sky-50/70 via-white to-slate-50 py-12 lg:py-20 border-b border-slate-200">
       {/* Subtle background radial glows */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-cyan-100/50 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-sky-100/50 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-3xl space-y-6">
-          {/* Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-100/80 border border-sky-200/80 text-sky-900 text-xs font-bold tracking-wide uppercase shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-            <span>PRIYA HEALTH CARE • SINGAHI</span>
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-950 tracking-tight leading-[1.15]">
-            Trusted Healthcare, <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-700 bg-clip-text text-transparent">
-              With Care That Puts Patients First.
-            </span>
-          </h1>
-
-          {/* Description */}
-          <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-            {settings?.tagline ||
-              'Professional healthcare services with a focus on patient comfort, clear communication and compassionate care in Singahi, led by Dr. Gultun Paswan.'}
-          </p>
-
-          {/* Doctor Lead Badge - Interactive Doctor Card */}
-          <Link
-            to="/doctor/dr-gultun-paswan"
-            className="group inline-flex items-center gap-3.5 p-3 sm:pr-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md hover:border-sky-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
-            aria-label="View Dr. Gultun Paswan profile"
-          >
-            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold group-hover:bg-sky-200 transition-colors shrink-0">
-              <UserCheck className="w-5 h-5 text-sky-700" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          {/* Left Column: Hero Content */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Pill Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-100/80 border border-sky-200/80 text-sky-900 text-xs font-bold tracking-wide uppercase shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+              <span>PRIYA HEALTH CARE • SINGAHI</span>
             </div>
-            <div className="text-left">
-              <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Lead Consulting Physician
+
+            {/* Main Headline */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-950 tracking-tight leading-[1.15]">
+              Trusted Healthcare, <br className="hidden sm:inline" />
+              <span className="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-700 bg-clip-text text-transparent">
+                With Care That Puts Patients First.
               </span>
-              <span className="block text-sm font-bold text-slate-900 group-hover:text-sky-900 transition-colors">
-                {doctor?.name || 'Dr. Gultun Paswan'}
-              </span>
-            </div>
-            <div className="pl-2 border-l border-slate-200 flex items-center text-xs font-semibold text-sky-700 group-hover:text-cyan-700 transition-colors">
-              <span className="hidden sm:inline">View Doctor Profile</span>
-              <span className="sm:hidden">View</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
-            </div>
-          </Link>
+            </h1>
 
-          {/* CTAs */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+            {/* Detailed Healthcare Description */}
+            <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
+              Priya Health Care provides dedicated outpatient medical care, routine health consultations, and patient-focused treatment in Singahi. Led by Dr. Gultun Paswan, our clinic emphasizes clear communication, thorough diagnosis, and organized appointments for individuals and families across the community.
+            </p>
+
+            {/* Doctor Lead Badge - Interactive Doctor Card */}
             <Link
-              to="/appointments"
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-sky-800 hover:bg-sky-900 text-white font-semibold text-base shadow-sm hover:shadow-md transition-all active:scale-98"
+              to="/doctor/dr-gultun-paswan"
+              className="group inline-flex items-center gap-3.5 p-3 sm:pr-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md hover:border-sky-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+              aria-label="View Dr. Gultun Paswan profile"
             >
-              <Calendar className="w-5 h-5 text-cyan-300" />
-              <span>Book Appointment</span>
-              <ArrowRight className="w-4 h-4 text-sky-300" />
+              <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold group-hover:bg-sky-200 transition-colors shrink-0">
+                <UserCheck className="w-5 h-5 text-sky-700" />
+              </div>
+              <div className="text-left">
+                <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Lead Consulting Physician
+                </span>
+                <span className="block text-sm font-bold text-slate-900 group-hover:text-sky-900 transition-colors">
+                  {doctor?.name || 'Dr. Gultun Paswan'}
+                </span>
+              </div>
+              <div className="pl-2 border-l border-slate-200 flex items-center text-xs font-semibold text-sky-700 group-hover:text-cyan-700 transition-colors">
+                <span className="hidden sm:inline">View Doctor Profile</span>
+                <span className="sm:hidden">View</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
+              </div>
             </Link>
 
-            <Link
-              to="/contact"
-              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-base transition-all"
-            >
-              <Phone className="w-4 h-4 text-cyan-700" />
-              <span>Contact Clinic</span>
-            </Link>
+            {/* CTAs */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link
+                to="/appointments"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-sky-800 hover:bg-sky-900 text-white font-semibold text-base shadow-sm hover:shadow-md transition-all active:scale-98"
+              >
+                <Calendar className="w-5 h-5 text-cyan-300" />
+                <span>Book Appointment</span>
+                <ArrowRight className="w-4 h-4 text-sky-300" />
+              </Link>
+
+              <Link
+                to="/contact"
+                className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-base transition-all"
+              >
+                <Phone className="w-4 h-4 text-cyan-700" />
+                <span>Contact Clinic</span>
+              </Link>
+            </div>
+
+            {/* Highlights */}
+            <div className="pt-4 border-t border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-medium text-slate-600">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-cyan-600 shrink-0" />
+                <span>Personalized Care</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-cyan-600 shrink-0" />
+                <span>Singahi Location</span>
+              </div>
+              <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
+                <Clock className="w-4 h-4 text-cyan-600 shrink-0" />
+                <span>Structured Appointments</span>
+              </div>
+            </div>
           </div>
 
-          {/* Highlights */}
-          <div className="pt-4 border-t border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-medium text-slate-600">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-600 shrink-0" />
-              <span>Personalized Care</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-cyan-600 shrink-0" />
-              <span>Singahi Location</span>
-            </div>
-            <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
-              <Clock className="w-4 h-4 text-cyan-600 shrink-0" />
-              <span>Structured Appointments</span>
+          {/* Right Column: Large Priya Health Care Clinic Portal Card */}
+          <div className="lg:col-span-5">
+            <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 text-white p-7 sm:p-8 shadow-xl border border-sky-800/40 overflow-hidden">
+              {/* Decorative background circle */}
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-sky-500/10 blur-2xl pointer-events-none" />
+
+              <div className="relative space-y-6">
+                {/* Clinic Portal Header */}
+                <div className="flex items-center justify-between border-b border-white/10 pb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-sky-400 p-0.5 shadow-md flex items-center justify-center">
+                      <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-cyan-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-white text-lg tracking-tight">
+                        Priya Health Care
+                      </h3>
+                      <p className="text-xs text-cyan-300 font-medium flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-cyan-400" />
+                        Singahi, Uttar Pradesh
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    OPD Open Today
+                  </span>
+                </div>
+
+                {/* Doctor Section inside Portal Card */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0 mt-0.5">
+                      <Stethoscope className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-cyan-300 uppercase tracking-wider">
+                          Consulting Doctor
+                        </span>
+                        <Link
+                          to="/doctor/dr-gultun-paswan"
+                          className="text-[11px] text-cyan-300 hover:text-white font-semibold flex items-center gap-0.5 transition-colors"
+                        >
+                          Profile <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                      <h4 className="text-base font-bold text-white truncate mt-0.5">
+                        {doctor?.name || 'Dr. Gultun Paswan'}
+                      </h4>
+                      <p className="text-xs text-slate-300">
+                        {doctor?.designation || 'Lead Consulting Physician'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timings and Clinic Details */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Consultation Hours</span>
+                    </div>
+                    <p className="font-semibold text-white">
+                      {settings?.opening_time || '09:00 AM'} - {settings?.closing_time || '07:00 PM'}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {settings?.working_days || 'Mon - Sat'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Care Service</span>
+                    </div>
+                    <p className="font-semibold text-white">Outpatient Care</p>
+                    <p className="text-[11px] text-slate-400">Routine & Acute Checkups</p>
+                  </div>
+                </div>
+
+                {/* Portal Features list */}
+                <div className="space-y-2 text-xs text-slate-300 pt-1">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Scheduled appointments to avoid waiting room rush</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Verified doctor credentials & clinic details in Singahi</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Direct phone and WhatsApp appointment support</span>
+                  </div>
+                </div>
+
+                {/* Portal Card Action Buttons */}
+                <div className="pt-2 flex gap-3">
+                  <Link
+                    to="/appointments"
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-bold text-xs text-center transition-all shadow-md active:scale-98"
+                  >
+                    Book OPD Slot
+                  </Link>
+                  <Link
+                    to="/doctor/dr-gultun-paswan"
+                    className="py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-semibold text-xs text-center transition-colors"
+                  >
+                    View Doctor
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>

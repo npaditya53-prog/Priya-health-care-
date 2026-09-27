@@ -28,15 +28,77 @@ import {
 } from 'lucide-react';
 import { useClinic } from '../context/ClinicContext';
 import { api, GalleryImageData } from '../lib/api';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 
 export const DoctorProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { doctor, clinic, settings, services, faqs, loading, isVerified, reloadAll } = useClinic();
+  const { doctor: contextDoctor, clinic, settings, services, faqs, loading: contextLoading, isVerified, reloadAll } = useClinic();
+
+  const [firestoreDoctor, setFirestoreDoctor] = useState<any>(null);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
 
   const [galleryImages, setGalleryImages] = useState<GalleryImageData[]>([]);
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [openFaqIndices, setOpenFaqIndices] = useState<number[]>([0]);
+
+  // Real-time Firestore subscription to /doctor/doctor-gultun-paswan
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    try {
+      const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
+      unsubscribe = onSnapshot(
+        docRef,
+        (snap) => {
+          if (!isMounted) return;
+          if (snap.exists()) {
+            setFirestoreDoctor(snap.data());
+          }
+          setFirestoreLoading(false);
+        },
+        (err) => {
+          console.warn('[DoctorProfilePage] Firestore doctor listener notice:', err);
+          if (isMounted) {
+            setFirestoreError(err.code || err.message);
+            // Fallback: Try one-time getDoc
+            getDoc(docRef)
+              .then((snap) => {
+                if (isMounted && snap.exists()) {
+                  setFirestoreDoctor(snap.data());
+                }
+              })
+              .catch((e) => console.warn('[DoctorProfilePage] getDoc fallback notice:', e))
+              .finally(() => {
+                if (isMounted) setFirestoreLoading(false);
+              });
+          }
+        }
+      );
+    } catch (e: any) {
+      console.warn('[DoctorProfilePage] Firestore listener init error:', e);
+      if (isMounted) setFirestoreLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Merge real-time Firestore doctor with context doctor
+  const doctor = useMemo(() => {
+    if (firestoreDoctor && firestoreDoctor.name) {
+      return {
+        ...contextDoctor,
+        ...firestoreDoctor,
+      };
+    }
+    return contextDoctor;
+  }, [firestoreDoctor, contextDoctor]);
 
   // Load verified gallery images
   useEffect(() => {
@@ -117,12 +179,12 @@ export const DoctorProfilePage: React.FC = () => {
   }, [activeLightboxIndex, galleryImages]);
 
   // Parsed Specialties array
-  const specialtiesList = useMemo(() => {
+  const specialtiesList: string[] = useMemo(() => {
     if (!doctor?.specialties || !isVerified(doctor.specialties)) return [];
-    return doctor.specialties
+    return String(doctor.specialties)
       .split(/[,;\n•]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 0);
   }, [doctor?.specialties, isVerified]);
 
   // Toggle FAQ accordion item
@@ -155,7 +217,8 @@ export const DoctorProfilePage: React.FC = () => {
   };
 
   // 1. Loading Skeleton State
-  if (loading) {
+  const isPageLoading = (contextLoading && !doctor) || (firestoreLoading && !doctor);
+  if (isPageLoading) {
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 animate-pulse">
         {/* Breadcrumb skeleton */}
@@ -185,8 +248,8 @@ export const DoctorProfilePage: React.FC = () => {
     );
   }
 
-  // 2. Not Found / Unpublished State (Doctor record missing or is_published === 0)
-  if (!doctor || (doctor.is_published !== undefined && Number(doctor.is_published) === 0)) {
+  // 2. Doctor record missing completely
+  if (!doctor && !isPageLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
@@ -208,7 +271,37 @@ export const DoctorProfilePage: React.FC = () => {
     );
   }
 
-  // 3. Error Fallback State
+  // 3. Doctor record unpublished
+  const isPublished =
+    doctor &&
+    (doctor.is_published === undefined ||
+      doctor.is_published === true ||
+      Number(doctor.is_published) === 1 ||
+      doctor.is_published === '1');
+
+  if (!isPublished) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Profile Pending Publication</h1>
+          <p className="text-sm text-slate-600 mt-2 mb-6">
+            This doctor profile is currently undergoing updates and will be available shortly.
+          </p>
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-sky-800 hover:bg-sky-900 text-white font-semibold text-sm shadow-xs transition-colors"
+          >
+            Return to Priya Health Care
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Error Fallback State
   if (!doctor.name) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
@@ -604,7 +697,7 @@ export const DoctorProfilePage: React.FC = () => {
 
           {specialtiesList.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {specialtiesList.map((specialty, idx) => (
+              {specialtiesList.map((specialty: string, idx: number) => (
                 <div
                   key={idx}
                   className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200/90 shadow-2xs flex items-start gap-3"

@@ -166,6 +166,9 @@ export async function syncUserProfileToFirestore(fbUser: User, role: 'PATIENT' |
   if (!fbUser || !fbUser.uid) return;
   const path = `users/${fbUser.uid}`;
   try {
+    const isGrantedAdmin = fbUser.email === 'npaditya53@gmail.com' || role === 'ADMIN';
+    const effectiveRole = isGrantedAdmin ? 'ADMIN' : role;
+
     const docRef = doc(db, 'users', fbUser.uid);
     await setDoc(
       docRef,
@@ -174,11 +177,29 @@ export async function syncUserProfileToFirestore(fbUser: User, role: 'PATIENT' |
         email: fbUser.email || '',
         displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
         photoURL: fbUser.photoURL || '',
-        role,
+        role: effectiveRole,
         lastLoginAt: new Date().toISOString(),
       },
       { merge: true }
     );
+
+    if (isGrantedAdmin) {
+      try {
+        const adminDocRef = doc(db, 'admins', fbUser.uid);
+        await setDoc(
+          adminDocRef,
+          {
+            uid: fbUser.uid,
+            email: fbUser.email || '',
+            role: 'ADMIN',
+            grantedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (admErr) {
+        console.warn('Admins collection sync notice:', admErr);
+      }
+    }
   } catch (error) {
     console.warn('Firestore user profile sync notice:', error);
   }
@@ -238,5 +259,69 @@ export async function getClinicFromFirestore() {
   }
   return null;
 }
+
+// Sync Doctor Profile to Firestore
+export async function syncDoctorToFirestore(data: {
+  name: string;
+  designation: string;
+  bio?: string | null;
+  qualifications?: string | null;
+  experience?: string | null;
+  specialties?: string | null;
+  registration?: string | null;
+  consultation_info?: string | null;
+  is_published?: number | boolean | null;
+  image_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}) {
+  const path = 'doctor/doctor-gultun-paswan';
+  try {
+    const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
+    const isPublishedBool =
+      data.is_published !== undefined && data.is_published !== null
+        ? typeof data.is_published === 'boolean'
+          ? data.is_published
+          : Number(data.is_published) !== 0
+        : true;
+
+    await setDoc(
+      docRef,
+      {
+        id: 'doctor-gultun-paswan',
+        name: data.name || 'Dr. Gultun Paswan',
+        designation: data.designation || 'Lead Consulting Physician',
+        bio: data.bio || '',
+        qualifications: data.qualifications || '',
+        experience: data.experience || '',
+        specialties: data.specialties || '',
+        registration: data.registration || '',
+        consultation_info: data.consultation_info || '',
+        is_published: isPublishedBool,
+        image_url: data.image_url || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn('Firestore doctor sync notice:', error);
+  }
+}
+
+// Fetch Doctor Profile from Firestore
+export async function getDoctorFromFirestore() {
+  try {
+    const snap = await getDoc(doc(db, 'doctor', 'doctor-gultun-paswan'));
+    if (snap.exists()) {
+      return snap.data();
+    }
+  } catch (error) {
+    console.warn('Firestore doctor fetch notice:', error);
+  }
+  return null;
+}
+
 
 

@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 import bcrypt from 'bcryptjs';
-import { syncClinicDocumentToFirestore, initFirestoreCounterIfMissing } from './firestore.js';
+import { syncClinicDocumentToFirestore, syncDoctorDocumentToFirestore, initFirestoreCounterIfMissing } from './firestore.js';
 
 // Initialize persistent SQLite database with serverless/container compatibility (Vercel, Render)
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -346,17 +346,35 @@ function migrateAppointmentNumbers() {
 function seedDefaultData() {
   const now = new Date().toISOString();
 
-  // 1. Seed Default Admin User if not exists
-  const existingAdmin = sqlite.prepare('SELECT id FROM admin_users WHERE email = ?').get('admin@priyahealthcare.com');
-  if (!existingAdmin) {
-    // Password: AdminPassword123!
-    const salt = bcrypt.genSaltSync(12);
-    const hash = bcrypt.hashSync('AdminPassword123!', salt);
+  // 1. Seed Default Admin Users (npaditya53@gmail.com and admin@priyahealthcare.com)
+  const salt = bcrypt.genSaltSync(12);
+  const adminPasswordHash = bcrypt.hashSync('PriyaCare#2026', salt);
+
+  const existingAditya = sqlite.prepare('SELECT id FROM admin_users WHERE LOWER(email) = LOWER(?)').get('npaditya53@gmail.com') as { id: string } | undefined;
+  if (!existingAditya) {
     sqlite.prepare(`
       INSERT INTO admin_users (id, name, email, password_hash, role, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run('admin-primary-1', 'Clinic Administrator', 'admin@priyahealthcare.com', hash, 'ADMIN', now, now);
-    console.log('[Database] Seeded initial AdminUser: admin@priyahealthcare.com (AdminPassword123!)');
+      VALUES (?, ?, ?, ?, 'ADMIN', ?, ?)
+    `).run('admin-npaditya', 'Aditya (Clinic Admin)', 'npaditya53@gmail.com', adminPasswordHash, now, now);
+    console.log('[Database] Seeded AdminUser: npaditya53@gmail.com (Role: ADMIN, Password: PriyaCare#2026)');
+  } else {
+    sqlite.prepare(`
+      UPDATE admin_users SET role = 'ADMIN', password_hash = ?, updated_at = ? WHERE id = ?
+    `).run(adminPasswordHash, now, existingAditya.id);
+    console.log('[Database] Updated AdminUser: npaditya53@gmail.com (Role: ADMIN)');
+  }
+
+  const existingAdmin = sqlite.prepare('SELECT id FROM admin_users WHERE email = ?').get('admin@priyahealthcare.com') as { id: string } | undefined;
+  if (!existingAdmin) {
+    sqlite.prepare(`
+      INSERT INTO admin_users (id, name, email, password_hash, role, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'ADMIN', ?, ?)
+    `).run('admin-primary-1', 'Clinic Administrator', 'admin@priyahealthcare.com', adminPasswordHash, now, now);
+    console.log('[Database] Seeded initial AdminUser: admin@priyahealthcare.com (PriyaCare#2026)');
+  } else {
+    sqlite.prepare(`
+      UPDATE admin_users SET password_hash = ?, updated_at = ? WHERE id = ?
+    `).run(adminPasswordHash, now, existingAdmin.id);
   }
 
   // 2. Seed Doctor record (Dr. Gultun Paswan)
@@ -389,6 +407,16 @@ function seedDefaultData() {
       UPDATE doctor SET designation = 'Lead Consulting Physician'
       WHERE id = 'doctor-gultun-paswan' AND designation = 'Doctor'
     `).run();
+  }
+
+  // Ensure Dr. Gultun Paswan profile document is synchronized to Firestore
+  try {
+    const currentDoctor = sqlite.prepare('SELECT * FROM doctor WHERE id = ?').get('doctor-gultun-paswan') as any;
+    if (currentDoctor) {
+      syncDoctorDocumentToFirestore(currentDoctor).catch(() => {});
+    }
+  } catch (syncDocErr) {
+    console.warn('[Database] Doctor Firestore sync notice:', syncDocErr);
   }
 
   // 3. Seed Clinic record (Singahi)

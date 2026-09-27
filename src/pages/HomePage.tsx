@@ -9,6 +9,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { Hero } from '../components/Hero';
+import { QuickActions } from '../components/QuickActions';
 import { useClinic } from '../context/ClinicContext';
 
 export const HomePage: React.FC = () => {
@@ -28,7 +29,10 @@ export const HomePage: React.FC = () => {
       {/* 1. Hero Section */}
       <Hero />
 
-      {/* 2. About Section */}
+      {/* 2. Fast Access Section */}
+      <QuickActions />
+
+      {/* 3. About Section */}
       <section className="py-16 lg:py-20 bg-slate-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

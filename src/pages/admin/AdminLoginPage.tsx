@@ -34,6 +34,11 @@ export const AdminLoginPage: React.FC = () => {
     }
   };
 
+  const fillAdityaCredentials = () => {
+    setEmail('npaditya53@gmail.com');
+    setPassword('PriyaCare#2026');
+  };
+
   const fillDefaultCredentials = () => {
     setEmail('admin@priyahealthcare.com');
     setPassword('PriyaCare#2026');
@@ -164,21 +169,37 @@ export const AdminLoginPage: React.FC = () => {
             <div className="flex-grow border-t border-slate-700"></div>
           </div>
 
-          {/* Quick Demo Credentials helper */}
-          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/80 text-xs text-slate-400 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-300">Default Staff Access:</span>
+          {/* Admin Credentials helper */}
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-400 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>Admin Access Granted: npaditya53@gmail.com</span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              You can log in either via <strong>Google Sign-In</strong> with your email above or via email & password:
+            </p>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                onClick={fillAdityaCredentials}
+                className="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 hover:bg-cyan-900 text-[11px] font-semibold transition-colors cursor-pointer"
+              >
+                Auto-fill npaditya53
+              </button>
               <button
                 type="button"
                 onClick={fillDefaultCredentials}
-                className="text-[11px] text-cyan-400 hover:underline font-medium"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
               >
-                Auto-fill Demo
+                Auto-fill admin@
               </button>
             </div>
-            <div className="font-mono text-[11px] text-slate-400">
-              <div>Email: admin@priyahealthcare.com</div>
-              <div>Password: PriyaCare#2026</div>
+
+            <div className="font-mono text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+              <div>Email: <span className="text-white">npaditya53@gmail.com</span></div>
+              <div>Password: <span className="text-white">PriyaCare#2026</span></div>
             </div>
           </div>
 
