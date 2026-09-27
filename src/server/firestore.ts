@@ -348,27 +348,51 @@ export async function syncDoctorDocumentToFirestore(data: {
           : Number(data.is_published) !== 0
         : true;
 
-    await setDoc(
-      docRef,
-      {
-        id: 'doctor-gultun-paswan',
-        name: data.name || 'Dr. Gultun Paswan',
-        designation: data.designation || 'Lead Consulting Physician',
-        bio: data.bio || '',
-        qualifications: data.qualifications || '',
-        experience: data.experience || '',
-        specialties: data.specialties || '',
-        registration: data.registration || '',
-        consultation_info: data.consultation_info || '',
-        is_published: isPublishedBool,
-        image_url: data.image_url || '',
-        phone: data.phone || '',
-        email: data.email || '',
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-    console.log('[Firestore] Synced doctor profile doc doctor-gultun-paswan');
+    // Fetch existing doc first to prevent overwriting real user data with empty/placeholder values
+    let existingDoc: any = null;
+    try {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        existingDoc = snap.data();
+      }
+    } catch {
+      // ignore
+    }
+
+    const isPlaceholder = (val: any) =>
+      !val ||
+      val === '[ADD VERIFIED INFORMATION]' ||
+      String(val).toLowerCase().includes('pending verification');
+
+    const pickBest = (incomingVal: any, existingVal: any, fallback: string = '') => {
+      if (incomingVal !== undefined && incomingVal !== null && !isPlaceholder(incomingVal)) {
+        return String(incomingVal).trim();
+      }
+      if (existingVal !== undefined && existingVal !== null && !isPlaceholder(existingVal)) {
+        return String(existingVal).trim();
+      }
+      return incomingVal !== undefined && incomingVal !== null ? String(incomingVal).trim() : fallback;
+    };
+
+    const payload = {
+      id: 'doctor-gultun-paswan',
+      name: pickBest(data.name, existingDoc?.name, 'Dr. Gultun Paswan'),
+      designation: pickBest(data.designation, existingDoc?.designation, 'Lead Consulting Physician'),
+      bio: pickBest(data.bio, existingDoc?.bio, ''),
+      qualifications: pickBest(data.qualifications, existingDoc?.qualifications, ''),
+      experience: pickBest(data.experience, existingDoc?.experience, ''),
+      specialties: pickBest(data.specialties, existingDoc?.specialties, ''),
+      registration: pickBest(data.registration, existingDoc?.registration, ''),
+      consultation_info: pickBest(data.consultation_info, existingDoc?.consultation_info, ''),
+      is_published: isPublishedBool,
+      image_url: pickBest(data.image_url, existingDoc?.image_url, ''),
+      phone: pickBest(data.phone, existingDoc?.phone, ''),
+      email: pickBest(data.email, existingDoc?.email, ''),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await setDoc(docRef, payload, { merge: true });
+    console.log('[Firestore] Synced doctor profile doc doctor-gultun-paswan successfully');
   } catch (err) {
     console.warn('[Firestore] Doctor doc sync notice:', err);
   }
@@ -389,6 +413,67 @@ export async function getDoctorFromFirestore() {
     console.warn('[Firestore] Doctor fetch notice:', err);
   }
   return null;
+}
+
+/**
+ * Hydrates local SQLite database from Firestore on startup.
+ * Firestore is the CANONICAL single source of truth across website restarts and deployments.
+ */
+export async function hydrateDoctorFromFirestore(sqliteDb: any) {
+  const db = getBackendFirestore();
+  if (!db) return;
+  try {
+    const snap = await getDoc(doc(db, 'doctor', 'doctor-gultun-paswan'));
+    if (snap.exists()) {
+      const fsData = snap.data();
+      const isPlaceholder = (val: any) =>
+        !val ||
+        val === '[ADD VERIFIED INFORMATION]' ||
+        String(val).toLowerCase().includes('pending verification');
+
+      // If Firestore contains non-placeholder qualifications or details, hydrate SQLite!
+      const current = sqliteDb.prepare('SELECT * FROM doctor WHERE id = ?').get('doctor-gultun-paswan') as any;
+      const now = new Date().toISOString();
+
+      const name = !isPlaceholder(fsData.name) ? String(fsData.name).trim() : (current?.name || 'Dr. Gultun Paswan');
+      const designation = !isPlaceholder(fsData.designation) ? String(fsData.designation).trim() : (current?.designation || 'Lead Consulting Physician');
+      const bio = !isPlaceholder(fsData.bio) ? String(fsData.bio).trim() : (current && !isPlaceholder(current.bio) ? current.bio : '');
+      const qualifications = !isPlaceholder(fsData.qualifications) ? String(fsData.qualifications).trim() : (current && !isPlaceholder(current.qualifications) ? current.qualifications : '');
+      const experience = !isPlaceholder(fsData.experience) ? String(fsData.experience).trim() : (current && !isPlaceholder(current.experience) ? current.experience : '');
+      const specialties = !isPlaceholder(fsData.specialties) ? String(fsData.specialties).trim() : (current && !isPlaceholder(current.specialties) ? current.specialties : '');
+      const registration = !isPlaceholder(fsData.registration) ? String(fsData.registration).trim() : (current && !isPlaceholder(current.registration) ? current.registration : '');
+      const consultation_info = !isPlaceholder(fsData.consultation_info) ? String(fsData.consultation_info).trim() : (current && !isPlaceholder(current.consultation_info) ? current.consultation_info : '');
+      const is_published = fsData.is_published !== undefined ? (fsData.is_published ? 1 : 0) : (current?.is_published ?? 1);
+      const image_url = !isPlaceholder(fsData.image_url) ? String(fsData.image_url).trim() : (current?.image_url || '');
+      const phone = !isPlaceholder(fsData.phone) ? String(fsData.phone).trim() : (current?.phone || '');
+      const email = !isPlaceholder(fsData.email) ? String(fsData.email).trim() : (current?.email || '');
+
+      if (!current) {
+        sqliteDb.prepare(`
+          INSERT INTO doctor (id, name, designation, bio, qualifications, experience, specialties, registration, consultation_info, is_published, image_url, phone, email, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          'doctor-gultun-paswan', name, designation, bio, qualifications, experience, specialties,
+          registration, consultation_info, is_published, image_url, phone, email, now, now
+        );
+      } else {
+        sqliteDb.prepare(`
+          UPDATE doctor SET
+            name = ?, designation = ?, bio = ?, qualifications = ?, experience = ?,
+            specialties = ?, registration = ?, consultation_info = ?, is_published = ?,
+            image_url = ?, phone = ?, email = ?, updated_at = ?
+          WHERE id = ?
+        `).run(
+          name, designation, bio, qualifications, experience, specialties,
+          registration, consultation_info, is_published, image_url, phone, email, now,
+          'doctor-gultun-paswan'
+        );
+      }
+      console.log('[Firestore] SQLite hydrated successfully from persistent Firestore doctor document');
+    }
+  } catch (err) {
+    console.warn('[Firestore] Notice during doctor startup hydration:', err);
+  }
 }
 
 

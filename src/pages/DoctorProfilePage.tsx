@@ -80,15 +80,21 @@ export const DoctorProfilePage: React.FC = () => {
     };
   }, []);
 
-  // Merge real-time Firestore doctor with context doctor (Firestore takes highest precedence)
+  // Merge real-time Firestore doctor with context doctor and local storage cache (Firestore takes highest precedence)
   const doctor = useMemo(() => {
-    if (firestoreDoctor) {
-      return {
-        ...contextDoctor,
-        ...firestoreDoctor,
-      };
+    let cachedDoctor: any = null;
+    try {
+      const cached = localStorage.getItem('priya_cached_doctor');
+      if (cached) cachedDoctor = JSON.parse(cached);
+    } catch {
+      // ignore
     }
-    return contextDoctor;
+
+    return {
+      ...(cachedDoctor || {}),
+      ...(contextDoctor || {}),
+      ...(firestoreDoctor || {}),
+    };
   }, [firestoreDoctor, contextDoctor]);
 
   // Reset image load state whenever doctor photo URL updates

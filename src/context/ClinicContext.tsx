@@ -24,7 +24,17 @@ const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
 
 export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [clinic, setClinic] = useState<ClinicData | null>(null);
-  const [doctor, setDoctor] = useState<DoctorData | null>(null);
+  const [doctor, setDoctor] = useState<DoctorData | null>(() => {
+    try {
+      const cached = localStorage.getItem('priya_cached_doctor');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
   const [settings, setSettings] = useState<SiteSettingsData | null>(null);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [faqs, setFaqs] = useState<FAQData[]>([]);
@@ -46,7 +56,14 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (doctorRes.success && doctorRes.data) {
         // Only set if not already loaded from canonical real-time Firestore
         if (!firestoreDoctorLoadedRef.current) {
-          setDoctor(doctorRes.data);
+          setDoctor((prev) => {
+            if (!doctorRes.data) return prev || null;
+            // If prev has non-placeholder qualifications from Firestore/cache, keep them
+            if (prev && prev.qualifications && prev.qualifications !== '[ADD VERIFIED INFORMATION]') {
+              return { ...doctorRes.data, ...prev };
+            }
+            return doctorRes.data;
+          });
         }
       }
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
@@ -67,7 +84,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       (data) => {
         if (data) {
           firestoreDoctorLoadedRef.current = true;
-          setDoctor({
+          const freshDoc: DoctorData = {
             id: 'doctor-gultun-paswan',
             name: data.name || 'Dr. Gultun Paswan',
             designation: data.designation || 'Lead Consulting Physician',
@@ -88,7 +105,16 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             email: data.email || '',
             created_at: '',
             updated_at: data.updatedAt || new Date().toISOString(),
-          });
+          };
+
+          setDoctor(freshDoc);
+
+          // Update local cache for instant retrieval across browser reopens
+          try {
+            localStorage.setItem('priya_cached_doctor', JSON.stringify(freshDoc));
+          } catch {
+            // ignore
+          }
         }
       },
       (err) => {

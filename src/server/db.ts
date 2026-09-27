@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 import bcrypt from 'bcryptjs';
-import { syncClinicDocumentToFirestore, syncDoctorDocumentToFirestore, initFirestoreCounterIfMissing } from './firestore.js';
+import { syncClinicDocumentToFirestore, syncDoctorDocumentToFirestore, initFirestoreCounterIfMissing, hydrateDoctorFromFirestore } from './firestore.js';
 
 // Initialize persistent SQLite database with serverless/container compatibility (Vercel, Render)
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -422,14 +422,12 @@ function seedDefaultData() {
     `).run();
   }
 
-  // Ensure Dr. Gultun Paswan profile document is synchronized to Firestore
+  // Hydrate doctor profile from Firestore (Canonical Source of Truth).
+  // Never push dummy placeholder values to Firestore during startup!
   try {
-    const currentDoctor = sqlite.prepare('SELECT * FROM doctor WHERE id = ?').get('doctor-gultun-paswan') as any;
-    if (currentDoctor) {
-      syncDoctorDocumentToFirestore(currentDoctor).catch(() => {});
-    }
+    hydrateDoctorFromFirestore(sqlite).catch(() => {});
   } catch (syncDocErr) {
-    console.warn('[Database] Doctor Firestore sync notice:', syncDocErr);
+    console.warn('[Database] Doctor Firestore hydration notice:', syncDocErr);
   }
 
   // 3. Seed Clinic record (Singahi)

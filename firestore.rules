@@ -48,11 +48,11 @@ service cloud.firestore {
              data.designation is string && data.designation.size() >= 2 && data.designation.size() <= 100 &&
              (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 10000)) &&
-             (!('qualifications' in data) || (data.qualifications is string && data.qualifications.size() <= 2000)) &&
-             (!('experience' in data) || (data.experience is string && data.experience.size() <= 2000)) &&
-             (!('specialties' in data) || (data.specialties is string && data.specialties.size() <= 2000)) &&
-             (!('registration' in data) || (data.registration is string && data.registration.size() <= 1000)) &&
-             (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 2000)) &&
+             (!('qualifications' in data) || (data.qualifications is string && data.qualifications.size() <= 10000)) &&
+             (!('experience' in data) || (data.experience is string && data.experience.size() <= 10000)) &&
+             (!('specialties' in data) || (data.specialties is string && data.specialties.size() <= 5000)) &&
+             (!('registration' in data) || (data.registration is string && data.registration.size() <= 2000)) &&
+             (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 5000)) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() <= 100)) &&
              (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
              (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 500000)) &&

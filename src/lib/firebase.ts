@@ -330,6 +330,31 @@ export async function syncDoctorToFirestore(data: {
   const path = 'doctor/doctor-gultun-paswan';
   const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
 
+  let existingDoc: any = null;
+  try {
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      existingDoc = snap.data();
+    }
+  } catch {
+    // ignore
+  }
+
+  const isPlaceholder = (val: any) =>
+    !val ||
+    val === '[ADD VERIFIED INFORMATION]' ||
+    String(val).toLowerCase().includes('pending verification');
+
+  const pickBest = (incomingVal: any, existingVal: any, fallback: string = '') => {
+    if (incomingVal !== undefined && incomingVal !== null && !isPlaceholder(incomingVal)) {
+      return String(incomingVal).trim();
+    }
+    if (existingVal !== undefined && existingVal !== null && !isPlaceholder(existingVal)) {
+      return String(existingVal).trim();
+    }
+    return incomingVal !== undefined && incomingVal !== null ? String(incomingVal).trim() : fallback;
+  };
+
   const isPublishedBool =
     data.is_published !== undefined && data.is_published !== null
       ? typeof data.is_published === 'boolean'
@@ -339,23 +364,28 @@ export async function syncDoctorToFirestore(data: {
 
   const payload: Record<string, any> = {
     id: 'doctor-gultun-paswan',
-    name: (data.name || 'Dr. Gultun Paswan').trim(),
-    designation: (data.designation || 'Lead Consulting Physician').trim(),
-    bio: data.bio !== undefined && data.bio !== null ? String(data.bio).trim() : '',
-    qualifications: data.qualifications !== undefined && data.qualifications !== null ? String(data.qualifications).trim() : '',
-    experience: data.experience !== undefined && data.experience !== null ? String(data.experience).trim() : '',
-    specialties: data.specialties !== undefined && data.specialties !== null ? String(data.specialties).trim() : '',
-    registration: data.registration !== undefined && data.registration !== null ? String(data.registration).trim() : '',
-    consultation_info: data.consultation_info !== undefined && data.consultation_info !== null ? String(data.consultation_info).trim() : '',
+    name: pickBest(data.name, existingDoc?.name, 'Dr. Gultun Paswan'),
+    designation: pickBest(data.designation, existingDoc?.designation, 'Lead Consulting Physician'),
+    bio: pickBest(data.bio, existingDoc?.bio, ''),
+    qualifications: pickBest(data.qualifications, existingDoc?.qualifications, ''),
+    experience: pickBest(data.experience, existingDoc?.experience, ''),
+    specialties: pickBest(data.specialties, existingDoc?.specialties, ''),
+    registration: pickBest(data.registration, existingDoc?.registration, ''),
+    consultation_info: pickBest(data.consultation_info, existingDoc?.consultation_info, ''),
     is_published: isPublishedBool,
-    image_url: data.image_url !== undefined && data.image_url !== null ? String(data.image_url).trim() : '',
-    phone: data.phone !== undefined && data.phone !== null ? String(data.phone).trim() : '',
-    email: data.email !== undefined && data.email !== null ? String(data.email).trim() : '',
+    image_url: pickBest(data.image_url, existingDoc?.image_url, ''),
+    phone: pickBest(data.phone, existingDoc?.phone, ''),
+    email: pickBest(data.email, existingDoc?.email, ''),
     updatedAt: new Date().toISOString(),
   };
 
   try {
     await setDoc(docRef, payload, { merge: true });
+    try {
+      localStorage.setItem('priya_cached_doctor', JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
     console.log('[Firestore] Doctor doc synced successfully to doctor/doctor-gultun-paswan');
   } catch (error) {
     console.error('Firestore doctor sync failed:', error);

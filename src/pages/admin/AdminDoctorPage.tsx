@@ -22,19 +22,30 @@ export const AdminDoctorPage: React.FC = () => {
   const isEditingRef = useRef(false);
   const hasFirestoreLoadedRef = useRef(false);
 
-  const [formData, setFormData] = useState<Partial<DoctorData>>({
-    name: 'Dr. Gultun Paswan',
-    designation: 'Lead Consulting Physician',
-    bio: '',
-    qualifications: '',
-    experience: '',
-    specialties: '',
-    registration: '',
-    consultation_info: '',
-    is_published: 1,
-    image_url: '',
-    phone: '',
-    email: '',
+  // Pre-load from local cache if available for instant UI rendering
+  const [formData, setFormData] = useState<Partial<DoctorData>>(() => {
+    try {
+      const cached = localStorage.getItem('priya_cached_doctor');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      name: 'Dr. Gultun Paswan',
+      designation: 'Lead Consulting Physician',
+      bio: '',
+      qualifications: '',
+      experience: '',
+      specialties: '',
+      registration: '',
+      consultation_info: '',
+      is_published: 1,
+      image_url: '',
+      phone: '',
+      email: '',
+    };
   });
 
   const [loading, setLoading] = useState(true);
@@ -176,24 +187,49 @@ export const AdminDoctorPage: React.FC = () => {
       email: formData.email || '',
     };
 
+    let firestoreSaved = false;
+    let backendSaved = false;
+
     try {
       // 1. Primary Source of Truth: Canonical Firestore write
-      await syncDoctorToFirestore(cleanPayload);
-
-      // 2. Secondary Backend Sync (SQLite & audit logs)
       try {
-        await api.updateDoctor({
+        await syncDoctorToFirestore(cleanPayload);
+        firestoreSaved = true;
+      } catch (fsErr) {
+        console.warn('[AdminDoctorPage] Direct Firestore write notice:', fsErr);
+      }
+
+      // 2. Secondary Backend Sync (updates SQLite & triggers backend Firestore write as safety net)
+      try {
+        const res = await api.updateDoctor({
           ...cleanPayload,
           is_published: isPubVal,
         });
+        if (res.success) {
+          backendSaved = true;
+        }
       } catch (backendErr) {
         console.warn('[AdminDoctorPage] Secondary backend sync notice:', backendErr);
+      }
+
+      if (!firestoreSaved && !backendSaved) {
+        throw new Error('Could not reach database. Please check your network connection.');
+      }
+
+      // 3. Cache locally for instant availability across reloads
+      try {
+        localStorage.setItem(
+          'priya_cached_doctor',
+          JSON.stringify({ ...cleanPayload, id: 'doctor-gultun-paswan', is_published: isPubVal })
+        );
+      } catch {
+        // ignore
       }
 
       isEditingRef.current = false;
       setFeedback({
         type: 'success',
-        message: 'Doctor profile updated successfully! Real-time sync updated all open pages.',
+        message: 'Doctor profile and qualifications saved permanently to Firestore! Real-time sync updated across the entire website.',
       });
       await reloadAll();
     } catch (err: any) {
