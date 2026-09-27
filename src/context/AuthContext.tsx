@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { auth, loginWithGoogle, logoutFirebase, syncUserProfileToFirestore } from '../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { isAuthorizedAdminEmail, PRIMARY_ADMIN_EMAIL } from '../config/adminConfig';
 
 export interface AdminSessionUser {
   id: string;
@@ -15,6 +16,8 @@ interface AuthContextType {
   user: AdminSessionUser | null;
   firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  authorizedAdminEmail: string;
   loading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogleAuth: () => Promise<{ success: boolean; message?: string }>;
@@ -29,15 +32,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Sync Firebase Auth state changes
+  // Sync Firebase Auth state changes with strict single-admin authorization
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
         // Sync profile to Firestore
-        syncUserProfileToFirestore(fbUser, 'ADMIN');
+        await syncUserProfileToFirestore(fbUser);
 
-        // Check if we need backend session token
+        // Security check: Only the exact authorized admin email receives admin credentials
+        const isPermitted = isAuthorizedAdminEmail(fbUser.email);
+        if (!isPermitted) {
+          // Connected non-admin user
+          localStorage.removeItem('priya_admin_token');
+          setUser({
+            id: fbUser.uid,
+            name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+            email: fbUser.email || '',
+            role: 'PATIENT',
+            isFirebaseUser: true,
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Check if we need backend session token for authorized admin
         const existingToken = localStorage.getItem('priya_admin_token');
         if (!existingToken && fbUser.email) {
           try {
@@ -64,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setUser((prev) => {
-          if (prev && !prev.isFirebaseUser) return prev; // keep local token if active
+          if (prev && !prev.isFirebaseUser && prev.role === 'ADMIN' && isAuthorizedAdminEmail(prev.email)) return prev;
           return {
             id: fbUser.uid,
             name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Clinic Admin',
@@ -73,11 +92,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isFirebaseUser: true,
           };
         });
+        setLoading(false);
       } else {
         // Only clear user if no local token
         if (!localStorage.getItem('priya_admin_token')) {
           setUser(null);
         }
+        setLoading(false);
       }
     });
 
@@ -96,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const res = await api.getMe();
-      if (res.success && res.data?.user) {
+      if (res.success && res.data?.user && isAuthorizedAdminEmail(res.data.user.email)) {
         setUser({
           id: res.data.user.userId,
           name: res.data.user.name,
@@ -125,8 +146,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (credentials: { email: string; password: string }) => {
+    // Client-side Gate: reject immediately if not the authorized admin email
+    if (!isAuthorizedAdminEmail(credentials.email)) {
+      return {
+        success: false,
+        message: 'Access Denied — this account is not authorized for Admin access.',
+      };
+    }
+
     const res = await api.login(credentials);
-    if (res.success && res.data) {
+    if (res.success && res.data && isAuthorizedAdminEmail(res.data.user.email)) {
       localStorage.setItem('priya_admin_token', res.data.token);
       setUser({ ...res.data.user, isFirebaseUser: false });
       return { success: true };
@@ -142,9 +171,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fbUser = await loginWithGoogle();
       
       // Sync profile to Firestore
-      await syncUserProfileToFirestore(fbUser, 'ADMIN');
+      await syncUserProfileToFirestore(fbUser);
 
-      // Exchange with backend session
+      // Security check: Only the exact authorized admin email is granted access
+      if (!isAuthorizedAdminEmail(fbUser.email)) {
+        localStorage.removeItem('priya_admin_token');
+        setUser({
+          id: fbUser.uid,
+          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+          email: fbUser.email || '',
+          role: 'PATIENT',
+          isFirebaseUser: true,
+        });
+        return {
+          success: false,
+          message: `Access Denied — ${fbUser.email} is not authorized for Admin access.`,
+        };
+      }
+
+      // Exchange with backend session for authorized admin
       const res = await api.googleLogin({
         email: fbUser.email || '',
         name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Clinic Admin',
@@ -191,12 +236,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const isAdmin = !!user && user.role === 'ADMIN' && isAuthorizedAdminEmail(user.email);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         firebaseUser,
         isAuthenticated: !!user,
+        isAdmin,
+        authorizedAdminEmail: PRIMARY_ADMIN_EMAIL,
         loading,
         login,
         loginWithGoogleAuth,

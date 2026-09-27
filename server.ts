@@ -1117,7 +1117,9 @@ app.post('/api/upload', requireAuth, (req: AuthenticatedRequest, res: Response) 
     }
 
     const publicUrl = `/uploads/${req.file.filename}`;
-    AuditLogRepository.log('UPLOAD_IMAGE', 'Storage', req.file.filename, `Uploaded file ${req.file.originalname}`, req.user!.userId, req.user!.name);
+    const actorId = req.user?.userId || 'admin';
+    const actorName = req.user?.name || 'Administrator';
+    AuditLogRepository.log('UPLOAD_IMAGE', 'Storage', req.file.filename, `Uploaded file ${req.file.originalname}`, actorId, actorName);
     return res.json({
       success: true,
       data: {

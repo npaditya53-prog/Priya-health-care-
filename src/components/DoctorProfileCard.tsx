@@ -112,7 +112,7 @@ export const DoctorProfileCard: React.FC<{ compact?: boolean }> = ({ compact = f
 
               <div className="mt-3 text-slate-600 leading-relaxed text-sm">
                 {bioVerified ? (
-                  <p>{doctor?.bio}</p>
+                  <p className="whitespace-pre-line">{doctor?.bio}</p>
                 ) : (
                   <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2.5">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

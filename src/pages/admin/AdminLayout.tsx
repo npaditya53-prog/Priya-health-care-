@@ -12,30 +12,88 @@ import {
   HelpCircle,
   Quote,
   ShieldCheck,
+  ShieldAlert,
   LogOut,
   Menu,
   X,
   ExternalLink,
+  ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { isAuthorizedAdminEmail } from '../../config/adminConfig';
 
 export const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, loading } = useAuth();
+  const { user, logout, isAuthenticated, isAdmin, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Protected route guard
+  // Protected route guard: Redirect unauthenticated visitors to login
   React.useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/admin/login', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
 
-  if (loading || !isAuthenticated) {
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
+  };
+
+  // State 1: Verification Loading
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-9 h-9 animate-spin text-cyan-400" />
+          <p className="text-sm font-semibold text-slate-300">Checking authorization...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // State 2: Unauthenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
+  // State 3: Authenticated Non-Admin — Strict Access Denied Screen
+  if (!isAdmin || !isAuthorizedAdminEmail(user.email)) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-red-500/40 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-red-950/80 border border-red-500/50 flex items-center justify-center mx-auto text-red-400 shadow-lg">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Access Denied</h1>
+            <p className="text-xs text-red-400 font-semibold uppercase tracking-wider mt-1">
+              Unauthorized Account
+            </p>
+          </div>
+
+          <p className="text-sm text-slate-300 leading-relaxed">
+            You are signed in as <span className="font-semibold text-white">{user.email || 'User'}</span>. This account is not authorized to access the Clinic Admin Panel.
+          </p>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              to="/"
+              className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-md transition-colors"
+            >
+              Return to Website
+            </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs border border-slate-700 transition-colors cursor-pointer"
+            >
+              Sign Out & Switch Account
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -53,11 +111,6 @@ export const AdminLayout: React.FC = () => {
     { name: 'Testimonials', path: '/admin/testimonials', icon: Quote },
     { name: 'Security & Audit Logs', path: '/admin/audit-logs', icon: ShieldCheck, adminOnly: true },
   ];
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/admin/login');
-  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col lg:flex-row">

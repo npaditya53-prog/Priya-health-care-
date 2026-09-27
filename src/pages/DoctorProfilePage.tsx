@@ -25,6 +25,7 @@ import {
   X,
   ChevronLeft,
   Info,
+  Loader2,
 } from 'lucide-react';
 import { useClinic } from '../context/ClinicContext';
 import { api, GalleryImageData } from '../lib/api';
@@ -251,11 +252,17 @@ export const DoctorProfilePage: React.FC = () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
-  // 1. Loading Skeleton State: Show while real-time data is actively loading and no profile exists yet
-  const isPageLoading = (firestoreStatus === 'loading' && !doctor) || (contextLoading && !doctor && firestoreLoading);
+  // 1. Loading Skeleton State: Show while real-time data or context is actively loading and no profile exists yet
+  const isPageLoading = (firestoreStatus === 'loading' || firestoreLoading) && !doctor;
   if (isPageLoading) {
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 animate-pulse">
+        {/* Loading announcement */}
+        <div className="flex items-center gap-2 text-cyan-800 text-sm font-semibold mb-2">
+          <Loader2 className="w-4 h-4 animate-spin text-cyan-700" />
+          <span>Loading Doctor Profile...</span>
+        </div>
+
         {/* Breadcrumb skeleton */}
         <div className="h-4 w-48 bg-slate-200 rounded" />
 
@@ -306,8 +313,8 @@ export const DoctorProfilePage: React.FC = () => {
     );
   }
 
-  // 3. Genuine Missing State: ONLY when confirmed nonexistent by Firestore & backend
-  if (!doctor && (firestoreStatus === 'not_found' || !isPageLoading)) {
+  // 3. Genuine Missing State: ONLY when confirmed nonexistent by Firestore (snapshot.exists() === false)
+  if (firestoreStatus === 'not_found' && !doctor) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">

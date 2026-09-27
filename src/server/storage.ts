@@ -30,14 +30,14 @@ const storage = multer.diskStorage({
 export const uploadMiddleware = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 20 * 1024 * 1024, // 20MB limit for high-res mobile photos
   },
   fileFilter: (_req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const isImage = file.mimetype.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|heic|heif|bmp)$/i.test(file.originalname);
+    if (isImage) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
+      cb(new Error('Invalid file type. Please upload a valid image (JPEG, PNG, WebP, AVIF, HEIC).'));
     }
   },
 });

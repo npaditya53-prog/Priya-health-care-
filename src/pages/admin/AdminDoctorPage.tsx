@@ -110,6 +110,9 @@ export const AdminDoctorPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset input so selecting the same file again triggers onChange
+    e.target.value = '';
+
     setUploading(true);
     setFeedback(null);
     isEditingRef.current = true;
@@ -119,13 +122,13 @@ export const AdminDoctorPage: React.FC = () => {
       setFormData((prev) => ({ ...prev, image_url: url }));
       setFeedback({
         type: 'success',
-        message: 'Doctor portrait uploaded and optimized. Click "Save Changes" to publish.',
+        message: 'Doctor portrait uploaded successfully! Click "Save Changes" below to publish to the website.',
       });
     } catch (err: any) {
       console.error('Doctor photo upload error:', err);
       setFeedback({
         type: 'error',
-        message: err.message || 'File upload failed. Please try a valid JPG, PNG, or WebP image.',
+        message: err?.message || 'File upload failed. Please try a valid image file (JPG, PNG, WebP).',
       });
     } finally {
       setUploading(false);
@@ -290,12 +293,17 @@ export const AdminDoctorPage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer transition-colors border border-slate-200">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{uploading ? 'Uploading...' : 'Upload Doctor Photo'}</span>
+                    {uploading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-700" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{uploading ? 'Processing Image...' : 'Upload Doctor Photo'}</span>
                     <input
                       type="file"
-                      accept="image/png, image/jpeg, image/webp"
+                      accept="image/*"
                       className="hidden"
+                      disabled={uploading}
                       onChange={handleFileUpload}
                     />
                   </label>

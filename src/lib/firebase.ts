@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { isAuthorizedAdminEmail } from '../config/adminConfig';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
@@ -164,12 +165,12 @@ export async function syncContactMessageToFirestore(data: {
 }
 
 // Sync authenticated Google user profile to Firestore
-export async function syncUserProfileToFirestore(fbUser: User, role: 'PATIENT' | 'ADMIN' = 'ADMIN') {
+export async function syncUserProfileToFirestore(fbUser: User) {
   if (!fbUser || !fbUser.uid) return;
   const path = `users/${fbUser.uid}`;
   try {
-    const isGrantedAdmin = fbUser.email === 'npaditya53@gmail.com' || role === 'ADMIN';
-    const effectiveRole = isGrantedAdmin ? 'ADMIN' : role;
+    const isGrantedAdmin = isAuthorizedAdminEmail(fbUser.email);
+    const effectiveRole = isGrantedAdmin ? 'ADMIN' : 'PATIENT';
 
     const docRef = doc(db, 'users', fbUser.uid);
     await setDoc(

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, AlertCircle, ArrowLeft, ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowLeft, ShieldCheck, CheckCircle2, KeyRound, ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { isAuthorizedAdminEmail, PRIMARY_ADMIN_EMAIL } from '../../config/adminConfig';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, loginWithGoogleAuth, isAuthenticated } = useAuth();
+  const { user, login, loginWithGoogleAuth, logout, isAuthenticated, isAdmin, authorizedAdminEmail } = useAuth();
 
-  const [email, setEmail] = useState('npaditya53@gmail.com');
+  const [email, setEmail] = useState(authorizedAdminEmail || PRIMARY_ADMIN_EMAIL);
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,20 +17,26 @@ export const AdminLoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // If already authenticated, redirect
+  // If already authenticated as authorized admin, redirect to dashboard
   React.useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isAdmin) {
       navigate('/admin/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    setLoading(true);
 
-    const res = await login({ email, password });
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isAuthorizedAdminEmail(cleanEmail)) {
+      setError(`Access Denied — Only the authorized clinic administrator (${authorizedAdminEmail}) can access the Admin Panel.`);
+      return;
+    }
+
+    setLoading(true);
+    const res = await login({ email: cleanEmail, password });
     setLoading(false);
 
     if (res.success) {
@@ -43,6 +50,12 @@ export const AdminLoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isAuthorizedAdminEmail(cleanEmail)) {
+      setError(`Access Denied — Only the authorized administrator (${authorizedAdminEmail}) can reset the Admin password.`);
+      return;
+    }
 
     if (!newPassword || newPassword.length < 6) {
       setError('New password must be at least 6 characters long.');
@@ -60,7 +73,7 @@ export const AdminLoginPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
           newPassword: newPassword.trim(),
         }),
       });
@@ -73,7 +86,7 @@ export const AdminLoginPage: React.FC = () => {
         setPassword(newPassword);
         // Automatically log in with the new password
         setTimeout(async () => {
-          const loginRes = await login({ email: email.trim(), password: newPassword.trim() });
+          const loginRes = await login({ email: cleanEmail, password: newPassword.trim() });
           if (loginRes.success) {
             navigate('/admin/dashboard', { replace: true });
           } else {
@@ -89,13 +102,8 @@ export const AdminLoginPage: React.FC = () => {
     }
   };
 
-  const fillAdityaCredentials = () => {
-    setEmail('npaditya53@gmail.com');
-    setPassword('PriyaCare#2026');
-  };
-
-  const fillDefaultCredentials = () => {
-    setEmail('admin@priyahealthcare.com');
+  const fillAuthorizedCredentials = () => {
+    setEmail(authorizedAdminEmail || PRIMARY_ADMIN_EMAIL);
     setPassword('PriyaCare#2026');
   };
 
@@ -348,31 +356,48 @@ export const AdminLoginPage: React.FC = () => {
             <span>{loading ? 'Signing in with Google...' : 'Sign in with Google'}</span>
           </button>
 
+          {/* Non-Admin Logged In Warning Banner */}
+          {isAuthenticated && !isAdmin && (
+            <div className="p-4 rounded-2xl bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs space-y-3">
+              <div className="flex items-center gap-2 font-bold text-amber-300">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Signed In As Non-Admin</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-200">
+                You are currently signed in as <strong>{user?.email}</strong>. This account does not have administrator privileges.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout();
+                  setError(null);
+                }}
+                className="w-full py-2 px-3 rounded-lg bg-amber-900/60 hover:bg-amber-900 text-amber-200 border border-amber-600/50 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out & Switch to Admin Account</span>
+              </button>
+            </div>
+          )}
+
           {/* Quick Info & Helper */}
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-400 space-y-3">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold">
               <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>Admin Access: npaditya53@gmail.com</span>
+              <span>Authorized Admin: {authorizedAdminEmail}</span>
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Log in with <strong>Google</strong> or use email/password. You can set any new password you prefer using the tab above.
+              Log in with <strong>Google</strong> or use email/password for <strong>{authorizedAdminEmail}</strong>. Only this verified account has access to the clinic admin panel.
             </p>
 
             <div className="flex flex-wrap gap-2 pt-1">
               <button
                 type="button"
-                onClick={fillAdityaCredentials}
+                onClick={fillAuthorizedCredentials}
                 className="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 hover:bg-cyan-900 text-[11px] font-semibold transition-colors cursor-pointer"
               >
-                Auto-fill npaditya53
-              </button>
-              <button
-                type="button"
-                onClick={fillDefaultCredentials}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
-              >
-                Auto-fill admin@
+                Auto-fill Admin Email
               </button>
             </div>
           </div>

@@ -435,6 +435,7 @@ export const api = {
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       });
 
