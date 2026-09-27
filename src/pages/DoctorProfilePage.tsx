@@ -142,8 +142,16 @@ export const DoctorProfilePage: React.FC = () => {
         },
       },
       medicalSpecialty: isVerified(doctor?.specialties) ? doctor?.specialties : 'General Practice',
-      url: window.location.href,
+      url: 'https://priya-health-care.vercel.app/doctor/dr-gultun-paswan',
     };
+
+    let ogUrl = document.querySelector('meta[property="og:url"]');
+    if (!ogUrl) {
+      ogUrl = document.createElement('meta');
+      ogUrl.setAttribute('property', 'og:url');
+      document.head.appendChild(ogUrl);
+    }
+    ogUrl.setAttribute('content', 'https://priya-health-care.vercel.app/doctor/dr-gultun-paswan');
 
     let scriptTag = document.getElementById('doctor-profile-schema') as HTMLScriptElement | null;
     if (!scriptTag) {
@@ -194,25 +202,56 @@ export const DoctorProfilePage: React.FC = () => {
     );
   };
 
-  // Copy Profile Link to Clipboard
+  // Production public URL for Dr. Gultun Paswan's profile
+  const publicBaseUrl = 'https://priya-health-care.vercel.app';
+  const profileUrl = `${publicBaseUrl}/doctor/dr-gultun-paswan`;
+
+  // Robust copy helper with fallback
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fallback below
+    }
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return success;
+    } catch (err) {
+      console.error('Fallback copy error:', err);
+      return false;
+    }
+  };
+
+  // Copy Profile Link to Clipboard (priya-health-care.vercel.app)
   const handleCopyLink = () => {
-    const currentUrl = window.location.href;
-    navigator.clipboard.writeText(currentUrl).then(() => {
+    copyToClipboard(profileUrl).then(() => {
       setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+      setTimeout(() => setCopiedLink(false), 3000);
     });
   };
 
-  // WhatsApp and Facebook share handlers
+  // WhatsApp and Facebook share handlers (using priya-health-care.vercel.app)
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `Consult with Dr. Gultun Paswan at Priya Health Care, Singahi: ${window.location.href}`
+      `Consult with Dr. Gultun Paswan at Priya Health Care, Singahi:\n${profileUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   const handleFacebookShare = () => {
-    const url = encodeURIComponent(window.location.href);
+    const url = encodeURIComponent(profileUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
@@ -537,7 +576,12 @@ export const DoctorProfilePage: React.FC = () => {
                   {copiedLink ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700 font-bold">Link Copied!</span>
+                      <span className="text-emerald-700 font-bold hidden sm:inline">
+                        priya-health-care.vercel.app Copied!
+                      </span>
+                      <span className="text-emerald-700 font-bold sm:hidden">
+                        Link Copied!
+                      </span>
                     </>
                   ) : (
                     <>
@@ -678,45 +722,6 @@ export const DoctorProfilePage: React.FC = () => {
               </div>
             )}
           </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* 6. AREAS OF PRACTICE */}
-        {/* ========================================================================= */}
-        <section className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-10 shadow-sm space-y-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-900 text-xs font-bold mb-1">
-              <Stethoscope className="w-3.5 h-3.5 text-sky-700" />
-              <span>Clinical Focus</span>
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Areas of Practice</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Verified clinical disciplines and medical specialties offered by Dr. Gultun Paswan.
-            </p>
-          </div>
-
-          {specialtiesList.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {specialtiesList.map((specialty: string, idx: number) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200/90 shadow-2xs flex items-start gap-3"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-800 flex items-center justify-center shrink-0 mt-0.5">
-                    <ShieldCheck className="w-4 h-4 text-cyan-700" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">{specialty}</h3>
-                    <span className="text-[11px] text-slate-500 font-medium">Verified Specialty</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs sm:text-sm">
-              Areas of practice will be updated soon.
-            </div>
-          )}
         </section>
 
         {/* ========================================================================= */}
