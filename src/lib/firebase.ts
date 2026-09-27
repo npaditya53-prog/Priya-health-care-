@@ -358,7 +358,7 @@ export async function syncDoctorToFirestore(data: {
     console.log('[Firestore] Doctor doc synced successfully to doctor/doctor-gultun-paswan');
   } catch (error) {
     console.error('Firestore doctor sync failed:', error);
-    throw error;
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 

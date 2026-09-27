@@ -20,6 +20,7 @@ import { uploadDoctorPhoto } from '../../lib/photoUpload';
 export const AdminDoctorPage: React.FC = () => {
   const { reloadAll } = useClinic();
   const isEditingRef = useRef(false);
+  const hasFirestoreLoadedRef = useRef(false);
 
   const [formData, setFormData] = useState<Partial<DoctorData>>({
     name: 'Dr. Gultun Paswan',
@@ -45,11 +46,11 @@ export const AdminDoctorPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Initial backend load
+    // 1. Initial REST load fallback (only active if Firestore has not yet emitted)
     api.getAdminDoctor().then((res) => {
       if (!isMounted) return;
       const docData = res.data;
-      if (res.success && docData) {
+      if (!hasFirestoreLoadedRef.current && res.success && docData) {
         setFormData((prev) => {
           if (isEditingRef.current) return prev;
           return {
@@ -58,30 +59,39 @@ export const AdminDoctorPage: React.FC = () => {
           };
         });
       }
-      setLoading(false);
+      if (!hasFirestoreLoadedRef.current) {
+        setLoading(false);
+      }
     });
 
-    // 2. Real-time Firestore synchronization
+    // 2. Real-time Firestore synchronization (Single Source of Truth)
     const unsubscribe = subscribeToDoctor((data: DoctorRealtimeData | null) => {
-      if (!isMounted || !data) return;
-      setLoading(false);
-      // Only auto-populate if user is not currently in the middle of active keystroke editing
-      if (!isEditingRef.current) {
-        setFormData((prev) => ({
-          ...prev,
-          name: data.name || prev.name || 'Dr. Gultun Paswan',
-          designation: data.designation || prev.designation || 'Lead Consulting Physician',
-          bio: data.bio !== undefined ? data.bio : prev.bio,
-          qualifications: data.qualifications !== undefined ? data.qualifications : prev.qualifications,
-          experience: data.experience !== undefined ? data.experience : prev.experience,
-          specialties: data.specialties !== undefined ? data.specialties : prev.specialties,
-          registration: data.registration !== undefined ? data.registration : prev.registration,
-          consultation_info: data.consultation_info !== undefined ? data.consultation_info : prev.consultation_info,
-          is_published: data.is_published !== undefined ? (typeof data.is_published === 'boolean' ? (data.is_published ? 1 : 0) : Number(data.is_published)) : (prev.is_published ?? 1),
-          image_url: data.image_url !== undefined ? data.image_url : prev.image_url,
-          phone: data.phone !== undefined ? data.phone : prev.phone,
-          email: data.email !== undefined ? data.email : prev.email,
-        }));
+      if (!isMounted) return;
+      if (data) {
+        hasFirestoreLoadedRef.current = true;
+        setLoading(false);
+        // Only auto-populate if user is not currently in the middle of active keystroke editing
+        if (!isEditingRef.current) {
+          setFormData({
+            name: data.name || 'Dr. Gultun Paswan',
+            designation: data.designation || 'Lead Consulting Physician',
+            bio: data.bio !== undefined ? data.bio : '',
+            qualifications: data.qualifications !== undefined ? data.qualifications : '',
+            experience: data.experience !== undefined ? data.experience : '',
+            specialties: data.specialties !== undefined ? data.specialties : '',
+            registration: data.registration !== undefined ? data.registration : '',
+            consultation_info: data.consultation_info !== undefined ? data.consultation_info : '',
+            is_published:
+              data.is_published !== undefined
+                ? typeof data.is_published === 'boolean'
+                  ? (data.is_published ? 1 : 0)
+                  : Number(data.is_published)
+                : 1,
+            image_url: data.image_url !== undefined ? data.image_url : '',
+            phone: data.phone !== undefined ? data.phone : '',
+            email: data.email !== undefined ? data.email : '',
+          });
+        }
       }
     });
 
@@ -168,10 +178,14 @@ export const AdminDoctorPage: React.FC = () => {
       await syncDoctorToFirestore(cleanPayload);
 
       // 2. Secondary Backend Sync (SQLite & audit logs)
-      await api.updateDoctor({
-        ...cleanPayload,
-        is_published: isPubVal,
-      });
+      try {
+        await api.updateDoctor({
+          ...cleanPayload,
+          is_published: isPubVal,
+        });
+      } catch (backendErr) {
+        console.warn('[AdminDoctorPage] Secondary backend sync notice:', backendErr);
+      }
 
       isEditingRef.current = false;
       setFeedback({

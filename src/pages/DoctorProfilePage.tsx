@@ -54,11 +54,11 @@ export const DoctorProfilePage: React.FC = () => {
     const unsubscribe = subscribeToDoctor(
       (data, fromCache) => {
         if (!isMounted) return;
-        if (data && data.name) {
+        if (data) {
           setFirestoreDoctor(data);
           setFirestoreStatus('found');
           setFirestoreError(null);
-        } else if (data === null) {
+        } else {
           setFirestoreDoctor(null);
           setFirestoreStatus('not_found');
         }
@@ -81,7 +81,7 @@ export const DoctorProfilePage: React.FC = () => {
 
   // Merge real-time Firestore doctor with context doctor (Firestore takes highest precedence)
   const doctor = useMemo(() => {
-    if (firestoreDoctor && firestoreDoctor.name) {
+    if (firestoreDoctor) {
       return {
         ...contextDoctor,
         ...firestoreDoctor,

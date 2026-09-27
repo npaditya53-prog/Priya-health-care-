@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   api,
   ClinicData,
@@ -30,6 +30,8 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [faqs, setFaqs] = useState<FAQData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const firestoreDoctorLoadedRef = useRef(false);
+
   const reloadAll = async () => {
     try {
       const [clinicRes, doctorRes, settingsRes, servicesRes, faqsRes] = await Promise.all([
@@ -42,9 +44,10 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (clinicRes.success && clinicRes.data) setClinic(clinicRes.data);
       if (doctorRes.success && doctorRes.data) {
-        // Only set if not already loaded from real-time Firestore
-        const fetchedDoctor = doctorRes.data;
-        setDoctor((prev) => (prev ? { ...fetchedDoctor, ...prev } : fetchedDoctor));
+        // Only set if not already loaded from canonical real-time Firestore
+        if (!firestoreDoctorLoadedRef.current) {
+          setDoctor(doctorRes.data);
+        }
       }
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
       if (servicesRes.success && servicesRes.data) setServices(servicesRes.data);
@@ -59,20 +62,33 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     reloadAll();
 
-    // Canonical real-time listener to Firestore doctor document
+    // Canonical real-time listener to Firestore doctor document /doctor/doctor-gultun-paswan
     const unsubscribeDoctor = subscribeToDoctor(
       (data) => {
-        if (data && data.name) {
-          setDoctor((prev) => ({
-            ...(prev || {}),
-            ...data,
+        if (data) {
+          firestoreDoctorLoadedRef.current = true;
+          setDoctor({
+            id: 'doctor-gultun-paswan',
+            name: data.name || 'Dr. Gultun Paswan',
+            designation: data.designation || 'Lead Consulting Physician',
+            bio: data.bio || '',
+            qualifications: data.qualifications || '',
+            experience: data.experience || '',
+            specialties: data.specialties || '',
+            registration: data.registration || '',
+            consultation_info: data.consultation_info || '',
             is_published:
               data.is_published !== undefined
                 ? typeof data.is_published === 'boolean'
                   ? (data.is_published ? 1 : 0)
                   : Number(data.is_published)
                 : 1,
-          } as DoctorData));
+            image_url: data.image_url || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            created_at: '',
+            updated_at: data.updatedAt || new Date().toISOString(),
+          });
         }
       },
       (err) => {

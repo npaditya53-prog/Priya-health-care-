@@ -945,16 +945,16 @@ const handleDoctorUpdate = async (req: AuthenticatedRequest, res: Response) => {
   const updated = await DoctorRepository.update({
     name: data.name,
     designation: data.designation,
-    bio: data.bio,
-    qualifications: data.qualifications,
-    experience: data.experience,
-    specialties: data.specialties,
-    registration: data.registration !== undefined ? data.registration : undefined,
-    consultation_info: (data.consultation_info ?? data.consultationInfo) !== undefined ? (data.consultation_info ?? data.consultationInfo) : undefined,
+    bio: data.bio ?? undefined,
+    qualifications: data.qualifications ?? undefined,
+    experience: data.experience ?? undefined,
+    specialties: data.specialties ?? undefined,
+    registration: data.registration ?? undefined,
+    consultation_info: (data.consultation_info ?? data.consultationInfo) ?? undefined,
     is_published: data.is_published !== undefined ? (Number(data.is_published) ? 1 : 0) : (data.isPublished !== undefined ? (data.isPublished ? 1 : 0) : undefined),
-    image_url: (data.image_url ?? data.imageUrl) !== undefined ? (data.image_url ?? data.imageUrl) : undefined,
-    phone: data.phone,
-    email: data.email,
+    image_url: (data.image_url ?? data.imageUrl) ?? undefined,
+    phone: data.phone ?? undefined,
+    email: data.email ?? undefined,
   });
 
   AuditLogRepository.log('UPDATE_DOCTOR', 'Doctor', updated.id, 'Updated Dr. Gultun Paswan profile', req.user!.userId, req.user!.name);
