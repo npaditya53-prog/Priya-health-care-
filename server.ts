@@ -907,11 +907,13 @@ app.delete('/api/services/:id', requireAuth, (req: AuthenticatedRequest, res: Re
 
 app.get('/api/doctor', async (_req: Request, res: Response) => {
   let doctor = DoctorRepository.get();
-  if (!doctor || !doctor.name) {
+  try {
     const fsDoctor = await getDoctorFromFirestore();
-    if (fsDoctor) {
-      doctor = fsDoctor as any;
+    if (fsDoctor && fsDoctor.name) {
+      doctor = { ...(doctor || {}), ...fsDoctor } as any;
     }
+  } catch (e) {
+    console.warn('[Server] Firestore doctor fetch notice:', e);
   }
   return res.json({ success: true, data: doctor });
 });
@@ -919,16 +921,18 @@ app.get('/api/doctor', async (_req: Request, res: Response) => {
 // Admin Doctor Endpoints
 app.get('/api/admin/doctor', requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
   let doctor = DoctorRepository.get();
-  if (!doctor || !doctor.name) {
+  try {
     const fsDoctor = await getDoctorFromFirestore();
-    if (fsDoctor) {
-      doctor = fsDoctor as any;
+    if (fsDoctor && fsDoctor.name) {
+      doctor = { ...(doctor || {}), ...fsDoctor } as any;
     }
+  } catch (e) {
+    console.warn('[Server] Admin Firestore doctor fetch notice:', e);
   }
   return res.json({ success: true, data: doctor });
 });
 
-const handleDoctorUpdate = (req: AuthenticatedRequest, res: Response) => {
+const handleDoctorUpdate = async (req: AuthenticatedRequest, res: Response) => {
   const parse = DoctorUpdateSchema.safeParse(req.body);
   if (!parse.success) {
     return res.status(400).json({
@@ -938,7 +942,7 @@ const handleDoctorUpdate = (req: AuthenticatedRequest, res: Response) => {
   }
 
   const data = parse.data;
-  const updated = DoctorRepository.update({
+  const updated = await DoctorRepository.update({
     name: data.name,
     designation: data.designation,
     bio: data.bio,

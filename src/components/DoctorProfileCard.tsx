@@ -16,6 +16,13 @@ import { VerifiedField } from './VerifiedNotice';
 
 export const DoctorProfileCard: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { doctor, clinic, isVerified } = useClinic();
+  const [imageError, setImageError] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [doctor?.image_url]);
 
   const bioVerified = isVerified(doctor?.bio);
   const qualVerified = isVerified(doctor?.qualifications);
@@ -31,12 +38,21 @@ export const DoctorProfileCard: React.FC<{ compact?: boolean }> = ({ compact = f
           {/* Doctor Portrait / Professional Placeholder */}
           <div className="lg:col-span-4 flex flex-col items-center text-center">
             <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-800 to-slate-900 border-4 border-slate-100 shadow-md flex items-center justify-center">
-              {photoVerified ? (
-                <img
-                  src={doctor?.image_url!}
-                  alt={doctor?.name || 'Dr. Gultun Paswan'}
-                  className="w-full h-full object-cover"
-                />
+              {photoVerified && !imageError ? (
+                <div className="relative w-full h-full">
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 bg-slate-800 animate-pulse flex items-center justify-center">
+                      <User className="w-10 h-10 text-slate-500" />
+                    </div>
+                  )}
+                  <img
+                    src={doctor?.image_url!}
+                    alt={doctor?.name || 'Dr. Gultun Paswan'}
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    onLoad={() => setImageLoaded(true)}
+                    onError={() => setImageError(true)}
+                  />
+                </div>
               ) : (
                 /* Verified placeholder: Do NOT fake identity */
                 <div className="flex flex-col items-center justify-center p-4 text-sky-200">

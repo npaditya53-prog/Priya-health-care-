@@ -21,6 +21,7 @@ import {
   getDocFromServer,
   onSnapshot,
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -28,6 +29,7 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 /* CRITICAL: The app will break without specifying firestoreDatabaseId */
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {
@@ -260,6 +262,55 @@ export async function getClinicFromFirestore() {
   return null;
 }
 
+export interface DoctorRealtimeData {
+  id?: string;
+  name: string;
+  designation: string;
+  bio?: string;
+  qualifications?: string;
+  experience?: string;
+  specialties?: string;
+  registration?: string;
+  consultation_info?: string;
+  is_published?: boolean | number;
+  image_url?: string;
+  phone?: string;
+  email?: string;
+  updatedAt?: string;
+  fromCache?: boolean;
+}
+
+// Real-time subscription to canonical Doctor Profile /doctor/doctor-gultun-paswan
+export function subscribeToDoctor(
+  onData: (data: DoctorRealtimeData | null, fromCache: boolean) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
+  return onSnapshot(
+    docRef,
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      const fromCache = snapshot.metadata.fromCache;
+      if (snapshot.exists()) {
+        const raw = snapshot.data();
+        onData(
+          {
+            ...raw,
+            fromCache,
+          } as DoctorRealtimeData,
+          fromCache
+        );
+      } else {
+        onData(null, fromCache);
+      }
+    },
+    (err) => {
+      console.warn('[Firestore Realtime] Doctor listener notice:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
 // Sync Doctor Profile to Firestore
 export async function syncDoctorToFirestore(data: {
   name: string;
@@ -274,39 +325,40 @@ export async function syncDoctorToFirestore(data: {
   image_url?: string | null;
   phone?: string | null;
   email?: string | null;
-}) {
+}): Promise<void> {
   const path = 'doctor/doctor-gultun-paswan';
-  try {
-    const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
-    const isPublishedBool =
-      data.is_published !== undefined && data.is_published !== null
-        ? typeof data.is_published === 'boolean'
-          ? data.is_published
-          : Number(data.is_published) !== 0
-        : true;
+  const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
 
-    await setDoc(
-      docRef,
-      {
-        id: 'doctor-gultun-paswan',
-        name: data.name || 'Dr. Gultun Paswan',
-        designation: data.designation || 'Lead Consulting Physician',
-        bio: data.bio || '',
-        qualifications: data.qualifications || '',
-        experience: data.experience || '',
-        specialties: data.specialties || '',
-        registration: data.registration || '',
-        consultation_info: data.consultation_info || '',
-        is_published: isPublishedBool,
-        image_url: data.image_url || '',
-        phone: data.phone || '',
-        email: data.email || '',
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+  const isPublishedBool =
+    data.is_published !== undefined && data.is_published !== null
+      ? typeof data.is_published === 'boolean'
+        ? data.is_published
+        : Number(data.is_published) !== 0
+      : true;
+
+  const payload: Record<string, any> = {
+    id: 'doctor-gultun-paswan',
+    name: (data.name || 'Dr. Gultun Paswan').trim(),
+    designation: (data.designation || 'Lead Consulting Physician').trim(),
+    bio: data.bio !== undefined && data.bio !== null ? String(data.bio).trim() : '',
+    qualifications: data.qualifications !== undefined && data.qualifications !== null ? String(data.qualifications).trim() : '',
+    experience: data.experience !== undefined && data.experience !== null ? String(data.experience).trim() : '',
+    specialties: data.specialties !== undefined && data.specialties !== null ? String(data.specialties).trim() : '',
+    registration: data.registration !== undefined && data.registration !== null ? String(data.registration).trim() : '',
+    consultation_info: data.consultation_info !== undefined && data.consultation_info !== null ? String(data.consultation_info).trim() : '',
+    is_published: isPublishedBool,
+    image_url: data.image_url !== undefined && data.image_url !== null ? String(data.image_url).trim() : '',
+    phone: data.phone !== undefined && data.phone !== null ? String(data.phone).trim() : '',
+    email: data.email !== undefined && data.email !== null ? String(data.email).trim() : '',
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    await setDoc(docRef, payload, { merge: true });
+    console.log('[Firestore] Doctor doc synced successfully to doctor/doctor-gultun-paswan');
   } catch (error) {
-    console.warn('Firestore doctor sync notice:', error);
+    console.error('Firestore doctor sync failed:', error);
+    throw error;
   }
 }
 

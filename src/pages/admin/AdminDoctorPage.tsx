@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   User,
@@ -8,16 +8,18 @@ import {
   ExternalLink,
   Save,
   Trash2,
-  ShieldCheck,
   Eye,
   ChevronLeft,
+  Loader2,
 } from 'lucide-react';
 import { api, DoctorData } from '../../lib/api';
 import { useClinic } from '../../context/ClinicContext';
-import { syncDoctorToFirestore } from '../../lib/firebase';
+import { syncDoctorToFirestore, subscribeToDoctor, DoctorRealtimeData } from '../../lib/firebase';
+import { uploadDoctorPhoto } from '../../lib/photoUpload';
 
 export const AdminDoctorPage: React.FC = () => {
   const { reloadAll } = useClinic();
+  const isEditingRef = useRef(false);
 
   const [formData, setFormData] = useState<Partial<DoctorData>>({
     name: 'Dr. Gultun Paswan',
@@ -39,17 +41,60 @@ export const AdminDoctorPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Real-time Firestore subscription to canonical /doctor/doctor-gultun-paswan
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Initial backend load
     api.getAdminDoctor().then((res) => {
-      setLoading(false);
-      if (res.success && res.data) {
-        setFormData({
-          ...res.data,
-          is_published: res.data.is_published !== undefined ? Number(res.data.is_published) : 1,
+      if (!isMounted) return;
+      const docData = res.data;
+      if (res.success && docData) {
+        setFormData((prev) => {
+          if (isEditingRef.current) return prev;
+          return {
+            ...docData,
+            is_published: docData.is_published !== undefined ? Number(docData.is_published) : 1,
+          };
         });
       }
+      setLoading(false);
     });
+
+    // 2. Real-time Firestore synchronization
+    const unsubscribe = subscribeToDoctor((data: DoctorRealtimeData | null) => {
+      if (!isMounted || !data) return;
+      setLoading(false);
+      // Only auto-populate if user is not currently in the middle of active keystroke editing
+      if (!isEditingRef.current) {
+        setFormData((prev) => ({
+          ...prev,
+          name: data.name || prev.name || 'Dr. Gultun Paswan',
+          designation: data.designation || prev.designation || 'Lead Consulting Physician',
+          bio: data.bio !== undefined ? data.bio : prev.bio,
+          qualifications: data.qualifications !== undefined ? data.qualifications : prev.qualifications,
+          experience: data.experience !== undefined ? data.experience : prev.experience,
+          specialties: data.specialties !== undefined ? data.specialties : prev.specialties,
+          registration: data.registration !== undefined ? data.registration : prev.registration,
+          consultation_info: data.consultation_info !== undefined ? data.consultation_info : prev.consultation_info,
+          is_published: data.is_published !== undefined ? (typeof data.is_published === 'boolean' ? (data.is_published ? 1 : 0) : Number(data.is_published)) : (prev.is_published ?? 1),
+          image_url: data.image_url !== undefined ? data.image_url : prev.image_url,
+          phone: data.phone !== undefined ? data.phone : prev.phone,
+          email: data.email !== undefined ? data.email : prev.email,
+        }));
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
+
+  const handleFieldChange = (key: keyof DoctorData, value: any) => {
+    isEditingRef.current = true;
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,19 +102,28 @@ export const AdminDoctorPage: React.FC = () => {
 
     setUploading(true);
     setFeedback(null);
+    isEditingRef.current = true;
 
-    const res = await api.uploadFile(file);
-    setUploading(false);
-
-    if (res.success && res.data) {
-      setFormData((prev) => ({ ...prev, image_url: res.data!.url }));
-      setFeedback({ type: 'success', message: 'Doctor portrait uploaded successfully.' });
-    } else {
-      setFeedback({ type: 'error', message: res.error?.message || 'File upload failed.' });
+    try {
+      const { url } = await uploadDoctorPhoto(file);
+      setFormData((prev) => ({ ...prev, image_url: url }));
+      setFeedback({
+        type: 'success',
+        message: 'Doctor portrait uploaded and optimized. Click "Save Changes" to publish.',
+      });
+    } catch (err: any) {
+      console.error('Doctor photo upload error:', err);
+      setFeedback({
+        type: 'error',
+        message: err.message || 'File upload failed. Please try a valid JPG, PNG, or WebP image.',
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleRemovePhoto = () => {
+    isEditingRef.current = true;
     setFormData((prev) => ({ ...prev, image_url: '' }));
     setFeedback({
       type: 'success',
@@ -79,19 +133,24 @@ export const AdminDoctorPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving || uploading) return;
+
+    if (!formData.name?.trim()) {
+      setFeedback({ type: 'error', message: 'Doctor Full Name is required.' });
+      return;
+    }
+    if (!formData.designation?.trim()) {
+      setFeedback({ type: 'error', message: 'Doctor Designation is required.' });
+      return;
+    }
+
     setSaving(true);
     setFeedback(null);
 
     const isPubVal = formData.is_published ? 1 : 0;
-    const res = await api.updateDoctor({
-      ...formData,
-      is_published: isPubVal,
-    });
-
-    // Also synchronize to Firestore document doctor/doctor-gultun-paswan directly
-    syncDoctorToFirestore({
-      name: formData.name || 'Dr. Gultun Paswan',
-      designation: formData.designation || 'Lead Consulting Physician',
+    const cleanPayload = {
+      name: formData.name.trim(),
+      designation: formData.designation.trim(),
       bio: formData.bio || '',
       qualifications: formData.qualifications || '',
       experience: formData.experience || '',
@@ -102,15 +161,32 @@ export const AdminDoctorPage: React.FC = () => {
       image_url: formData.image_url || '',
       phone: formData.phone || '',
       email: formData.email || '',
-    }).catch((err) => console.warn('Admin Firestore doctor sync notice:', err));
+    };
 
-    setSaving(false);
+    try {
+      // 1. Primary Source of Truth: Canonical Firestore write
+      await syncDoctorToFirestore(cleanPayload);
 
-    if (res.success && res.data) {
-      setFeedback({ type: 'success', message: 'Doctor profile updated successfully!' });
-      reloadAll();
-    } else {
-      setFeedback({ type: 'error', message: res.error?.message || 'Failed to update profile.' });
+      // 2. Secondary Backend Sync (SQLite & audit logs)
+      await api.updateDoctor({
+        ...cleanPayload,
+        is_published: isPubVal,
+      });
+
+      isEditingRef.current = false;
+      setFeedback({
+        type: 'success',
+        message: 'Doctor profile updated successfully! Real-time sync updated all open pages.',
+      });
+      await reloadAll();
+    } catch (err: any) {
+      console.error('[AdminDoctorPage] Save error:', err);
+      setFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to update doctor profile. Please check your connection.',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -238,7 +314,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 required
                 value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:border-cyan-600 outline-none"
               />
             </div>
@@ -252,7 +328,7 @@ export const AdminDoctorPage: React.FC = () => {
                 required
                 placeholder="Lead Consulting Physician"
                 value={formData.designation || ''}
-                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                onChange={(e) => handleFieldChange('designation', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:border-cyan-600 outline-none"
               />
             </div>
@@ -267,7 +343,7 @@ export const AdminDoctorPage: React.FC = () => {
               rows={4}
               placeholder="Overview of Dr. Gultun Paswan's medical background, clinic commitment, and patient care approach..."
               value={formData.bio || ''}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              onChange={(e) => handleFieldChange('bio', e.target.value)}
               className="w-full p-3 rounded-xl border border-slate-200 text-xs leading-relaxed focus:border-cyan-600 outline-none"
             />
             <span className="text-[11px] text-slate-400 block mt-0.5">
@@ -285,7 +361,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 placeholder="e.g. MBBS / Medical Degrees"
                 value={formData.qualifications || ''}
-                onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                onChange={(e) => handleFieldChange('qualifications', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -298,7 +374,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 placeholder="e.g. Primary Care, Family Medicine, Outpatient Consultations"
                 value={formData.specialties || ''}
-                onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
+                onChange={(e) => handleFieldChange('specialties', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -314,7 +390,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 placeholder="e.g. 10+ Years Clinical Practice"
                 value={formData.experience || ''}
-                onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                onChange={(e) => handleFieldChange('experience', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -327,7 +403,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 placeholder="e.g. State Medical Council Registration No."
                 value={formData.registration || ''}
-                onChange={(e) => setFormData({ ...formData, registration: e.target.value })}
+                onChange={(e) => handleFieldChange('registration', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -342,7 +418,7 @@ export const AdminDoctorPage: React.FC = () => {
               type="text"
               placeholder="e.g. Mon-Sat: 09:00 AM - 07:00 PM (By Appointment)"
               value={formData.consultation_info || ''}
-              onChange={(e) => setFormData({ ...formData, consultation_info: e.target.value })}
+              onChange={(e) => handleFieldChange('consultation_info', e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
             />
           </div>
@@ -357,7 +433,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="text"
                 placeholder="+91..."
                 value={formData.phone || ''}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => handleFieldChange('phone', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -370,7 +446,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="email"
                 placeholder="doctor@priyahealthcare.com"
                 value={formData.email || ''}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
               />
             </div>
@@ -389,7 +465,7 @@ export const AdminDoctorPage: React.FC = () => {
                 type="checkbox"
                 checked={Boolean(formData.is_published)}
                 onChange={(e) =>
-                  setFormData({ ...formData, is_published: e.target.checked ? 1 : 0 })
+                  handleFieldChange('is_published', e.target.checked ? 1 : 0)
                 }
                 className="sr-only peer"
               />

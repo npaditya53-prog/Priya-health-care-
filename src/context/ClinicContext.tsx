@@ -7,6 +7,7 @@ import {
   ServiceData,
   FAQData,
 } from '../lib/api';
+import { subscribeToDoctor } from '../lib/firebase';
 
 interface ClinicContextType {
   clinic: ClinicData | null;
@@ -40,7 +41,11 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ]);
 
       if (clinicRes.success && clinicRes.data) setClinic(clinicRes.data);
-      if (doctorRes.success && doctorRes.data) setDoctor(doctorRes.data);
+      if (doctorRes.success && doctorRes.data) {
+        // Only set if not already loaded from real-time Firestore
+        const fetchedDoctor = doctorRes.data;
+        setDoctor((prev) => (prev ? { ...fetchedDoctor, ...prev } : fetchedDoctor));
+      }
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
       if (servicesRes.success && servicesRes.data) setServices(servicesRes.data);
       if (faqsRes.success && faqsRes.data) setFaqs(faqsRes.data);
@@ -53,6 +58,31 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     reloadAll();
+
+    // Canonical real-time listener to Firestore doctor document
+    const unsubscribeDoctor = subscribeToDoctor(
+      (data) => {
+        if (data && data.name) {
+          setDoctor((prev) => ({
+            ...(prev || {}),
+            ...data,
+            is_published:
+              data.is_published !== undefined
+                ? typeof data.is_published === 'boolean'
+                  ? (data.is_published ? 1 : 0)
+                  : Number(data.is_published)
+                : 1,
+          } as DoctorData));
+        }
+      },
+      (err) => {
+        console.warn('[ClinicContext] Real-time Doctor listener warning:', err);
+      }
+    );
+
+    return () => {
+      unsubscribeDoctor();
+    };
   }, []);
 
   // Helper to distinguish verified clinic info vs placeholder

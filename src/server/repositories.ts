@@ -470,7 +470,7 @@ export const DoctorRepository = {
     return cast<Doctor>(row);
   },
 
-  update(data: Partial<Doctor>): Doctor {
+  async update(data: Partial<Doctor>): Promise<Doctor> {
     const current = this.get();
     const now = new Date().toISOString();
 
@@ -499,21 +499,25 @@ export const DoctorRepository = {
 
     const updated = this.get();
 
-    // Sync to Firestore
-    syncDoctorDocumentToFirestore({
-      name: updated.name,
-      designation: updated.designation,
-      bio: updated.bio,
-      qualifications: updated.qualifications,
-      experience: updated.experience,
-      specialties: updated.specialties,
-      registration: updated.registration,
-      consultation_info: updated.consultation_info,
-      is_published: updated.is_published,
-      image_url: updated.image_url,
-      phone: updated.phone,
-      email: updated.email,
-    }).catch(() => {});
+    // Canonical Firestore Synchronization
+    try {
+      await syncDoctorDocumentToFirestore({
+        name: updated.name,
+        designation: updated.designation,
+        bio: updated.bio,
+        qualifications: updated.qualifications,
+        experience: updated.experience,
+        specialties: updated.specialties,
+        registration: updated.registration,
+        consultation_info: updated.consultation_info,
+        is_published: updated.is_published,
+        image_url: updated.image_url,
+        phone: updated.phone,
+        email: updated.email,
+      });
+    } catch (e) {
+      console.warn('[DoctorRepository] Firestore sync notice:', e);
+    }
 
     return updated;
   }

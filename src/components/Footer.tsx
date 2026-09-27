@@ -205,7 +205,7 @@ export const Footer: React.FC = () => {
             <span>•</span>
             <Link to="/admin/login" className="hover:text-cyan-400 transition-colors inline-flex items-center gap-1">
               <Lock className="w-3 h-3" />
-              Staff Login
+              Admin Login
             </Link>
           </div>
         </div>

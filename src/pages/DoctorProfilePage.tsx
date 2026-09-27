@@ -28,8 +28,7 @@ import {
 } from 'lucide-react';
 import { useClinic } from '../context/ClinicContext';
 import { api, GalleryImageData } from '../lib/api';
-import { db } from '../lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { subscribeToDoctor, DoctorRealtimeData } from '../lib/firebase';
 
 export const DoctorProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,51 +36,42 @@ export const DoctorProfilePage: React.FC = () => {
 
   const [firestoreDoctor, setFirestoreDoctor] = useState<any>(null);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [firestoreStatus, setFirestoreStatus] = useState<'loading' | 'found' | 'not_found' | 'error'>('loading');
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
+
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const [galleryImages, setGalleryImages] = useState<GalleryImageData[]>([]);
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [openFaqIndices, setOpenFaqIndices] = useState<number[]>([0]);
 
-  // Real-time Firestore subscription to /doctor/doctor-gultun-paswan
+  // Real-time Firestore subscription to canonical /doctor/doctor-gultun-paswan
   useEffect(() => {
     let isMounted = true;
-    let unsubscribe = () => {};
 
-    try {
-      const docRef = doc(db, 'doctor', 'doctor-gultun-paswan');
-      unsubscribe = onSnapshot(
-        docRef,
-        (snap) => {
-          if (!isMounted) return;
-          if (snap.exists()) {
-            setFirestoreDoctor(snap.data());
-          }
-          setFirestoreLoading(false);
-        },
-        (err) => {
-          console.warn('[DoctorProfilePage] Firestore doctor listener notice:', err);
-          if (isMounted) {
-            setFirestoreError(err.code || err.message);
-            // Fallback: Try one-time getDoc
-            getDoc(docRef)
-              .then((snap) => {
-                if (isMounted && snap.exists()) {
-                  setFirestoreDoctor(snap.data());
-                }
-              })
-              .catch((e) => console.warn('[DoctorProfilePage] getDoc fallback notice:', e))
-              .finally(() => {
-                if (isMounted) setFirestoreLoading(false);
-              });
-          }
+    const unsubscribe = subscribeToDoctor(
+      (data, fromCache) => {
+        if (!isMounted) return;
+        if (data && data.name) {
+          setFirestoreDoctor(data);
+          setFirestoreStatus('found');
+          setFirestoreError(null);
+        } else if (data === null) {
+          setFirestoreDoctor(null);
+          setFirestoreStatus('not_found');
         }
-      );
-    } catch (e: any) {
-      console.warn('[DoctorProfilePage] Firestore listener init error:', e);
-      if (isMounted) setFirestoreLoading(false);
-    }
+        setFirestoreLoading(false);
+      },
+      (err) => {
+        if (!isMounted) return;
+        console.warn('[DoctorProfilePage] Firestore doctor listener notice:', err);
+        setFirestoreError(err.message || 'Error subscribing to doctor data');
+        setFirestoreStatus('error');
+        setFirestoreLoading(false);
+      }
+    );
 
     return () => {
       isMounted = false;
@@ -89,7 +79,7 @@ export const DoctorProfilePage: React.FC = () => {
     };
   }, []);
 
-  // Merge real-time Firestore doctor with context doctor
+  // Merge real-time Firestore doctor with context doctor (Firestore takes highest precedence)
   const doctor = useMemo(() => {
     if (firestoreDoctor && firestoreDoctor.name) {
       return {
@@ -99,6 +89,12 @@ export const DoctorProfilePage: React.FC = () => {
     }
     return contextDoctor;
   }, [firestoreDoctor, contextDoctor]);
+
+  // Reset image load state whenever doctor photo URL updates
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [doctor?.image_url]);
 
   // Load verified gallery images
   useEffect(() => {
@@ -255,8 +251,8 @@ export const DoctorProfilePage: React.FC = () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
-  // 1. Loading Skeleton State
-  const isPageLoading = (contextLoading && !doctor) || (firestoreLoading && !doctor);
+  // 1. Loading Skeleton State: Show while real-time data is actively loading and no profile exists yet
+  const isPageLoading = (firestoreStatus === 'loading' && !doctor) || (contextLoading && !doctor && firestoreLoading);
   if (isPageLoading) {
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 animate-pulse">
@@ -287,8 +283,31 @@ export const DoctorProfilePage: React.FC = () => {
     );
   }
 
-  // 2. Doctor record missing completely
-  if (!doctor && !isPageLoading) {
+  // 2. Error Fallback State: Show explicit error instead of falsely claiming "Not Found"
+  if (firestoreStatus === 'error' && !doctor) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Connection Notice</h1>
+          <p className="text-sm text-slate-600 mt-2 mb-6">
+            {firestoreError || 'Unable to connect to live healthcare records. Please check your network connection.'}
+          </p>
+          <button
+            onClick={() => reloadAll()}
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-sky-800 hover:bg-sky-900 text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Genuine Missing State: ONLY when confirmed nonexistent by Firestore & backend
+  if (!doctor && (firestoreStatus === 'not_found' || !isPageLoading)) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 py-16 px-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
@@ -310,7 +329,7 @@ export const DoctorProfilePage: React.FC = () => {
     );
   }
 
-  // 3. Doctor record unpublished
+  // 4. Doctor record unpublished state
   const isPublished =
     doctor &&
     (doctor.is_published === undefined ||
@@ -445,13 +464,22 @@ export const DoctorProfilePage: React.FC = () => {
             {/* Left Column: Doctor Photograph Area */}
             <div className="lg:col-span-5 flex flex-col items-center">
               <div className="relative w-full max-w-sm aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br from-sky-900 via-slate-800 to-sky-950 border-4 border-slate-100 shadow-md flex items-center justify-center">
-                {isPhotoVerified ? (
-                  <img
-                    src={doctor.image_url!}
-                    alt="Dr. Gultun Paswan - Lead Consulting Physician at Priya Health Care"
-                    className="w-full h-full object-cover"
-                    loading="eager"
-                  />
+                {isPhotoVerified && !imageError ? (
+                  <div className="relative w-full h-full">
+                    {!imageLoaded && (
+                      <div className="absolute inset-0 bg-slate-800/80 animate-pulse flex items-center justify-center">
+                        <User className="w-12 h-12 text-slate-500" />
+                      </div>
+                    )}
+                    <img
+                      src={doctor.image_url!}
+                      alt={`${doctor.name || 'Dr. Gultun Paswan'} - ${doctor.designation || 'Lead Consulting Physician'}`}
+                      className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                      loading="eager"
+                      onLoad={() => setImageLoaded(true)}
+                      onError={() => setImageError(true)}
+                    />
+                  </div>
                 ) : (
                   /* Professional Placeholder: Never fake artificial face */
                   <div className="flex flex-col items-center justify-center p-8 text-center text-sky-200">

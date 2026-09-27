@@ -47,18 +47,18 @@ service cloud.firestore {
              data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
              data.designation is string && data.designation.size() >= 2 && data.designation.size() <= 100 &&
              (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
-             (!('qualifications' in data) || (data.qualifications is string && data.qualifications.size() <= 500)) &&
-             (!('experience' in data) || (data.experience is string && data.experience.size() <= 500)) &&
-             (!('specialties' in data) || (data.specialties is string && data.specialties.size() <= 500)) &&
-             (!('registration' in data) || (data.registration is string && data.registration.size() <= 200)) &&
-             (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 500)) &&
-             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
-             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
-             (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 500)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 10000)) &&
+             (!('qualifications' in data) || (data.qualifications is string && data.qualifications.size() <= 2000)) &&
+             (!('experience' in data) || (data.experience is string && data.experience.size() <= 2000)) &&
+             (!('specialties' in data) || (data.specialties is string && data.specialties.size() <= 2000)) &&
+             (!('registration' in data) || (data.registration is string && data.registration.size() <= 1000)) &&
+             (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 2000)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 100)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+             (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 500000)) &&
              (!('is_published' in data) || (data.is_published is bool || data.is_published is int)) &&
-             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50)) &&
-             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 100)) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
     }
 
     function isValidClinic(data) {

@@ -81,7 +81,7 @@ export const Navbar: React.FC = () => {
                 className="text-sky-300 hover:text-white transition-colors text-[11px] inline-flex items-center gap-1"
               >
                 <Lock className="w-3 h-3" />
-                <span>Google / Staff Login</span>
+                <span>Admin Login</span>
               </Link>
             )}
           </div>
