@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, AlertCircle, ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowLeft, ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, loginWithGoogleAuth, isAuthenticated } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('npaditya53@gmail.com');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isResetMode, setIsResetMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // If already authenticated, redirect
   React.useEffect(() => {
@@ -22,6 +26,7 @@ export const AdminLoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     const res = await login({ email, password });
@@ -31,6 +36,56 @@ export const AdminLoginPage: React.FC = () => {
       navigate('/admin/dashboard', { replace: true });
     } else {
       setError(res.message || 'Invalid credentials. Please verify your email and password.');
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!newPassword || newPassword.length < 6) {
+      setError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match. Please verify.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          newPassword: newPassword.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      setLoading(false);
+
+      if (data.success) {
+        setSuccessMessage('Your new password has been set successfully! Logging in...');
+        setPassword(newPassword);
+        // Automatically log in with the new password
+        setTimeout(async () => {
+          const loginRes = await login({ email: email.trim(), password: newPassword.trim() });
+          if (loginRes.success) {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            setIsResetMode(false);
+          }
+        }, 1200);
+      } else {
+        setError(data.error?.message || 'Failed to update password. Please check your admin email.');
+      }
+    } catch {
+      setLoading(false);
+      setError('Network error occurred while setting new password.');
     }
   };
 
@@ -70,58 +125,190 @@ export const AdminLoginPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                Admin Email
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  placeholder="admin@priyahealthcare.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
-                />
-              </div>
+          {successMessage && (
+            <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-200 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successMessage}</span>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
-                />
-              </div>
-            </div>
-
+          {/* Mode Tabs: Login vs Set New Password */}
+          <div className="grid grid-cols-2 p-1 bg-slate-900/90 rounded-xl border border-slate-700 text-xs font-semibold">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
+              type="button"
+              onClick={() => {
+                setIsResetMode(false);
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 rounded-lg transition-colors cursor-pointer ${
+                !isResetMode ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
             >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Lock className="w-4 h-4" />
-              )}
-              <span>{loading ? 'Authenticating...' : 'Sign In to Dashboard'}</span>
+              Sign In
             </button>
-          </form>
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetMode(true);
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                isResetMode ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Set New Password</span>
+            </button>
+          </div>
+
+          {!isResetMode ? (
+            /* Login Form */
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Admin Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="admin@priyahealthcare.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetMode(true);
+                      setError(null);
+                    }}
+                    className="text-[11px] text-cyan-400 hover:underline cursor-pointer"
+                  >
+                    Set New Password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Lock className="w-4 h-4" />
+                )}
+                <span>{loading ? 'Authenticating...' : 'Sign In to Dashboard'}</span>
+              </button>
+            </form>
+          ) : (
+            /* Set New Password Form */
+            <form onSubmit={handleSetNewPassword} className="space-y-4">
+              <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-800/50 text-cyan-200 text-xs">
+                Admin can set any new password here to login to Priya Health Care dashboard.
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Admin Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="npaditya53@gmail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  New Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="Enter your new password (min. 6 characters)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder:text-slate-500 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <KeyRound className="w-4 h-4" />
+                )}
+                <span>{loading ? 'Updating Password...' : 'Save New Password & Sign In'}</span>
+              </button>
+            </form>
+          )}
 
           {/* Primary Google Sign-In */}
           <button
@@ -161,23 +348,15 @@ export const AdminLoginPage: React.FC = () => {
             <span>{loading ? 'Signing in with Google...' : 'Sign in with Google'}</span>
           </button>
 
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-700"></div>
-            <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Or password login
-            </span>
-            <div className="flex-grow border-t border-slate-700"></div>
-          </div>
-
-          {/* Admin Credentials helper */}
+          {/* Quick Info & Helper */}
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-400 space-y-3">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold">
               <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>Admin Access Granted: npaditya53@gmail.com</span>
+              <span>Admin Access: npaditya53@gmail.com</span>
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              You can log in either via <strong>Google Sign-In</strong> with your email above or via email & password:
+              Log in with <strong>Google</strong> or use email/password. You can set any new password you prefer using the tab above.
             </p>
 
             <div className="flex flex-wrap gap-2 pt-1">
@@ -195,11 +374,6 @@ export const AdminLoginPage: React.FC = () => {
               >
                 Auto-fill admin@
               </button>
-            </div>
-
-            <div className="font-mono text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-              <div>Email: <span className="text-white">npaditya53@gmail.com</span></div>
-              <div>Password: <span className="text-white">PriyaCare#2026</span></div>
             </div>
           </div>
 

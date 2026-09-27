@@ -350,7 +350,7 @@ function seedDefaultData() {
   const salt = bcrypt.genSaltSync(12);
   const adminPasswordHash = bcrypt.hashSync('PriyaCare#2026', salt);
 
-  const existingAditya = sqlite.prepare('SELECT id FROM admin_users WHERE LOWER(email) = LOWER(?)').get('npaditya53@gmail.com') as { id: string } | undefined;
+  const existingAditya = sqlite.prepare('SELECT id, password_hash FROM admin_users WHERE LOWER(email) = LOWER(?)').get('npaditya53@gmail.com') as { id: string; password_hash: string } | undefined;
   if (!existingAditya) {
     sqlite.prepare(`
       INSERT INTO admin_users (id, name, email, password_hash, role, created_at, updated_at)
@@ -358,13 +358,20 @@ function seedDefaultData() {
     `).run('admin-npaditya', 'Aditya (Clinic Admin)', 'npaditya53@gmail.com', adminPasswordHash, now, now);
     console.log('[Database] Seeded AdminUser: npaditya53@gmail.com (Role: ADMIN, Password: PriyaCare#2026)');
   } else {
-    sqlite.prepare(`
-      UPDATE admin_users SET role = 'ADMIN', password_hash = ?, updated_at = ? WHERE id = ?
-    `).run(adminPasswordHash, now, existingAditya.id);
-    console.log('[Database] Updated AdminUser: npaditya53@gmail.com (Role: ADMIN)');
+    // Only update role, preserve custom password if already set
+    if (!existingAditya.password_hash || existingAditya.password_hash === 'GOOGLE_AUTH_VERIFIED') {
+      sqlite.prepare(`
+        UPDATE admin_users SET role = 'ADMIN', password_hash = ?, updated_at = ? WHERE id = ?
+      `).run(adminPasswordHash, now, existingAditya.id);
+    } else {
+      sqlite.prepare(`
+        UPDATE admin_users SET role = 'ADMIN', updated_at = ? WHERE id = ?
+      `).run(now, existingAditya.id);
+    }
+    console.log('[Database] Verified AdminUser: npaditya53@gmail.com (Role: ADMIN)');
   }
 
-  const existingAdmin = sqlite.prepare('SELECT id FROM admin_users WHERE email = ?').get('admin@priyahealthcare.com') as { id: string } | undefined;
+  const existingAdmin = sqlite.prepare('SELECT id, password_hash FROM admin_users WHERE email = ?').get('admin@priyahealthcare.com') as { id: string; password_hash: string } | undefined;
   if (!existingAdmin) {
     sqlite.prepare(`
       INSERT INTO admin_users (id, name, email, password_hash, role, created_at, updated_at)
@@ -372,9 +379,15 @@ function seedDefaultData() {
     `).run('admin-primary-1', 'Clinic Administrator', 'admin@priyahealthcare.com', adminPasswordHash, now, now);
     console.log('[Database] Seeded initial AdminUser: admin@priyahealthcare.com (PriyaCare#2026)');
   } else {
-    sqlite.prepare(`
-      UPDATE admin_users SET password_hash = ?, updated_at = ? WHERE id = ?
-    `).run(adminPasswordHash, now, existingAdmin.id);
+    if (!existingAdmin.password_hash) {
+      sqlite.prepare(`
+        UPDATE admin_users SET role = 'ADMIN', password_hash = ?, updated_at = ? WHERE id = ?
+      `).run(adminPasswordHash, now, existingAdmin.id);
+    } else {
+      sqlite.prepare(`
+        UPDATE admin_users SET role = 'ADMIN', updated_at = ? WHERE id = ?
+      `).run(now, existingAdmin.id);
+    }
   }
 
   // 2. Seed Doctor record (Dr. Gultun Paswan)

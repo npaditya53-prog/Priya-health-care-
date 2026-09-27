@@ -29,10 +29,7 @@ export const HomePage: React.FC = () => {
       {/* 1. Hero Section */}
       <Hero />
 
-      {/* 2. Fast Access Section */}
-      <QuickActions />
-
-      {/* 3. About Section */}
+      {/* 2. About Section */}
       <section className="py-16 lg:py-20 bg-slate-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -127,9 +124,9 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Location & Directions Section */}
-      <section className="py-16 bg-slate-50">
+      <section className="pt-6 sm:pt-8 pb-16 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-8 sm:p-12 rounded-3xl bg-white border border-slate-200 shadow-sm">
+          <div className="p-8 sm:p-12 rounded-3xl bg-white border border-slate-200 shadow-sm -mt-2 sm:-mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-700 block mb-1">

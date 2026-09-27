@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, Clock, CheckCircle2, AlertCircle, Calendar, ChevronLeft } from 'lucide-react';
+import { Settings, Clock, CheckCircle2, AlertCircle, Calendar, ChevronLeft, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { api, SiteSettingsData } from '../../lib/api';
 import { useClinic } from '../../context/ClinicContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const AdminSettingsPage: React.FC = () => {
   const { reloadAll } = useClinic();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState<Partial<SiteSettingsData>>({
     clinic_name: 'Priya Health Care',
@@ -25,6 +27,12 @@ export const AdminSettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Password management states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordFeedback, setPasswordFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   useEffect(() => {
     api.getSettings().then((res) => {
       if (res.success && res.data) {
@@ -32,6 +40,46 @@ export const AdminSettingsPage: React.FC = () => {
       }
     });
   }, []);
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordFeedback(null);
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordFeedback({ type: 'error', message: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordFeedback({ type: 'error', message: 'Passwords do not match.' });
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user?.email || 'npaditya53@gmail.com',
+          newPassword: newPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+      setPasswordSaving(false);
+
+      if (data.success) {
+        setPasswordFeedback({ type: 'success', message: 'New password saved successfully! You can now use it to log in.' });
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordFeedback({ type: 'error', message: data.error?.message || 'Failed to update password.' });
+      }
+    } catch {
+      setPasswordSaving(false);
+      setPasswordFeedback({ type: 'error', message: 'Network error updating password.' });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,6 +318,95 @@ export const AdminSettingsPage: React.FC = () => {
               {saving ? 'Saving...' : 'Save Settings'}
             </button>
           </div>
+        </form>
+      </div>
+
+      {/* Admin Security & Password Card */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Set Admin Password</h2>
+              <p className="text-xs text-slate-500">
+                Set a new password for account: <strong>{user?.email || 'npaditya53@gmail.com'}</strong>
+              </p>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Administrator</span>
+          </div>
+        </div>
+
+        {passwordFeedback && (
+          <div
+            className={`p-4 rounded-xl text-xs flex items-center gap-2 ${
+              passwordFeedback.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {passwordFeedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span>{passwordFeedback.message}</span>
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              New Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Enter new password (min. 6 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-cyan-600 outline-none"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={passwordSaving}
+            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{passwordSaving ? 'Updating Password...' : 'Save New Password'}</span>
+          </button>
         </form>
       </div>
     </div>
