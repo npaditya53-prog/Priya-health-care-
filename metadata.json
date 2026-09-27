@@ -1,0 +1,6 @@
+{
+  "name": "Priya Health Care - Singahi",
+  "description": "Production-ready healthcare website and appointment management system for Priya Health Care in Singahi, led by Dr. Gultun Paswan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

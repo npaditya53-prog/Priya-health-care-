@@ -1,0 +1,186 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------
+    // Global Deny Catch-all
+    // -------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------
+    // Global Helper Primitives
+    // -------------------------------------------------------------
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email == 'npaditya53@gmail.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // -------------------------------------------------------------
+    // Validation Helpers
+    // -------------------------------------------------------------
+    function isValidDoctor(data) {
+      return data.keys().hasAll(['name', 'designation']) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+             data.designation is string && data.designation.size() >= 2 && data.designation.size() <= 100 &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
+             (!('qualifications' in data) || (data.qualifications is string && data.qualifications.size() <= 500)) &&
+             (!('experience' in data) || (data.experience is string && data.experience.size() <= 500)) &&
+             (!('specialties' in data) || (data.specialties is string && data.specialties.size() <= 500)) &&
+             (!('registration' in data) || (data.registration is string && data.registration.size() <= 200)) &&
+             (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 500)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 500)) &&
+             (!('is_published' in data) || (data.is_published is bool));
+    }
+
+    function isValidClinic(data) {
+      return data.keys().hasAll(['name', 'city']) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+             data.city is string && data.city.size() >= 2 && data.city.size() <= 100 &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 500)) &&
+             (!('state' in data) || (data.state is string && data.state.size() <= 100)) &&
+             (!('pincode' in data) || (data.pincode is string && data.pincode.size() <= 20)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+             (!('whatsapp' in data) || (data.whatsapp is string && data.whatsapp.size() <= 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('opening_hours' in data) || (data.opening_hours is string && data.opening_hours.size() <= 500)) &&
+             (!('google_maps_url' in data) || (data.google_maps_url is string && data.google_maps_url.size() <= 1000)) &&
+             (!('phoneVerified' in data) || (data.phoneVerified is bool)) &&
+             (!('emailVerified' in data) || (data.emailVerified is bool)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['appointmentId', 'patientName', 'phone', 'appointmentDate', 'appointmentTime', 'reason', 'status']) &&
+             data.appointmentId is string && data.appointmentId.size() >= 3 && data.appointmentId.size() <= 50 &&
+             data.patientName is string && data.patientName.size() >= 2 && data.patientName.size() <= 100 &&
+             data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20 &&
+             data.appointmentDate is string && data.appointmentDate.size() <= 20 &&
+             data.appointmentTime is string && data.appointmentTime.size() <= 20 &&
+             data.reason is string && data.reason.size() >= 2 && data.reason.size() <= 300 &&
+             data.status in ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'RESCHEDULED', 'NO_SHOW'] &&
+             (!('appointmentNumber' in data) || (data.appointmentNumber is int && data.appointmentNumber > 0)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('message' in data) || (data.message is string && data.message.size() <= 1000)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    function isValidCounter(data) {
+      return ('lastAppointmentNumber' in data) &&
+             data.lastAppointmentNumber is int &&
+             data.lastAppointmentNumber >= 0;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll(['name', 'phone', 'message', 'status']) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20 &&
+             data.message is string && data.message.size() >= 5 && data.message.size() <= 1500 &&
+             data.status in ['NEW', 'READ', 'RESOLVED', 'RESPONDED', 'ARCHIVED'] &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100));
+    }
+
+    function isValidService(data) {
+      return data.keys().hasAll(['title', 'slug', 'short_description']) &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 100 &&
+             data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 100 &&
+             data.short_description is string && data.short_description.size() >= 5 && data.short_description.size() <= 300 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 5000)) &&
+             (!('icon' in data) || (data.icon is string && data.icon.size() <= 50)) &&
+             (!('isActive' in data) || (data.isActive is bool)) &&
+             (!('displayOrder' in data) || (data.displayOrder is number));
+    }
+
+    // -------------------------------------------------------------
+    // Collections
+    // -------------------------------------------------------------
+
+    // 1. Doctor Profile
+    match /doctor/{doctorId} {
+      allow get, list: if isValidId(doctorId);
+      allow create: if isAdmin() && isValidId(doctorId) && isValidDoctor(incoming());
+      allow update: if isAdmin() && isValidId(doctorId) && isValidDoctor(incoming());
+      allow delete: if isAdmin() && isValidId(doctorId);
+    }
+
+    // 2. Clinic Information
+    match /clinic/{clinicId} {
+      allow get, list: if isValidId(clinicId);
+      allow create, update: if isValidId(clinicId) && isValidClinic(incoming()) && (isAdmin() || clinicId == 'clinic-singahi-main');
+      allow delete: if isAdmin() && isValidId(clinicId);
+    }
+
+    // 3. Healthcare Services Catalog
+    match /services/{serviceId} {
+      allow get, list: if isValidId(serviceId);
+      allow create: if isAdmin() && isValidId(serviceId) && isValidService(incoming());
+      allow update: if isAdmin() && isValidId(serviceId) && isValidService(incoming());
+      allow delete: if isAdmin() && isValidId(serviceId);
+    }
+
+    // 4. Appointments
+    match /appointments/{appointmentId} {
+      // Patient or admin can read their appointment by ID
+      allow get: if isValidId(appointmentId);
+      allow list: if isAdmin();
+      // Patient or admin can create an appointment
+      allow create: if isValidId(appointmentId) && isValidAppointment(incoming()) && incoming().status == 'PENDING';
+      // Only admin can update appointment status or reschedule
+      allow update: if isAdmin() && isValidId(appointmentId) && isValidAppointment(incoming());
+      allow delete: if isAdmin() && isValidId(appointmentId);
+    }
+
+    // 5. Counters
+    match /counters/{counterId} {
+      allow get: if isValidId(counterId);
+      allow create, update: if isValidId(counterId) && isValidCounter(incoming());
+      allow delete: if isAdmin() && isValidId(counterId);
+    }
+
+    // 5. Contact Inquiries
+    match /contact_messages/{messageId} {
+      allow create: if isValidId(messageId) && isValidContactMessage(incoming()) && incoming().status == 'NEW';
+      allow get, list, update, delete: if isAdmin() && isValidId(messageId);
+    }
+
+    // 6. Admins List
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow write: if isBootstrappedAdmin() && isValidId(adminUid);
+    }
+
+    // 7. Users Collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+  }
+}

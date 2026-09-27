@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "Doctor": {
+      "title": "Doctor",
+      "description": "Doctor profile information for Dr. Gultun Paswan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "designation": { "type": "string", "maxLength": 100 },
+        "bio": { "type": "string", "maxLength": 2000 },
+        "qualifications": { "type": "string", "maxLength": 500 },
+        "experience": { "type": "string", "maxLength": 500 },
+        "specialties": { "type": "string", "maxLength": 500 },
+        "registration": { "type": "string", "maxLength": 200 },
+        "consultation_info": { "type": "string", "maxLength": 500 },
+        "image_url": { "type": "string", "maxLength": 500 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "is_published": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "designation"]
+    },
+    "Clinic": {
+      "title": "Clinic",
+      "description": "Priya Health Care clinic profile and contact details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "address": { "type": "string", "maxLength": 500 },
+        "city": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 100 },
+        "pincode": { "type": "string", "maxLength": 20 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "whatsapp": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "opening_hours": { "type": "string", "maxLength": 500 },
+        "google_maps_url": { "type": "string", "maxLength": 1000 },
+        "phoneVerified": { "type": "boolean" },
+        "emailVerified": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "city"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Outpatient appointment requests submitted by patients",
+      "type": "object",
+      "properties": {
+        "appointmentId": { "type": "string", "maxLength": 50 },
+        "appointmentNumber": { "type": "number" },
+        "patientName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "email": { "type": "string", "maxLength": 100 },
+        "appointmentDate": { "type": "string", "maxLength": 20 },
+        "appointmentTime": { "type": "string", "maxLength": 20 },
+        "reason": { "type": "string", "maxLength": 300 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "RESCHEDULED", "NO_SHOW"] },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["appointmentId", "patientName", "phone", "appointmentDate", "appointmentTime", "reason", "status"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Patient general inquiry or contact message",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "email": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 1500 },
+        "status": { "type": "string", "enum": ["NEW", "READ", "RESOLVED", "RESPONDED", "ARCHIVED"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "phone", "message", "status"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Medical services offered by Priya Health Care",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 100 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "short_description": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "icon": { "type": "string", "maxLength": 50 },
+        "isActive": { "type": "boolean" },
+        "displayOrder": { "type": "number" }
+      },
+      "required": ["title", "slug", "short_description"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized administrator record",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["ADMIN", "SUPERADMIN"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["email", "role"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile for Google authenticated visitors, patients, and staff",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 100 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["PATIENT", "ADMIN"] },
+        "lastLoginAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["uid", "email"]
+    },
+    "Counter": {
+      "title": "Counter",
+      "description": "Atomic sequential counter for appointments and sequences",
+      "type": "object",
+      "properties": {
+        "lastAppointmentNumber": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["lastAppointmentNumber"]
+    }
+  },
+  "firestore": {
+    "/doctor/{doctorId}": {
+      "schema": "#/entities/Doctor",
+      "description": "Public doctor profiles for consulting physicians"
+    },
+    "/clinic/{clinicId}": {
+      "schema": "#/entities/Clinic",
+      "description": "Clinic general information and location settings"
+    },
+    "/services/{serviceId}": {
+      "schema": "#/entities/Service",
+      "description": "Public catalog of healthcare and outpatient services"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "#/entities/Appointment",
+      "description": "Patient appointments and consultation schedule"
+    },
+    "/counters/{counterId}": {
+      "schema": "#/entities/Counter",
+      "description": "Atomic sequential counter for appointments"
+    },
+    "/contact_messages/{messageId}": {
+      "schema": "#/entities/ContactMessage",
+      "description": "Inbound patient contact and inquiry messages"
+    },
+    "/admins/{adminUid}": {
+      "schema": "#/entities/Admin",
+      "description": "Authorized clinic administrator list"
+    },
+    "/users/{userId}": {
+      "schema": "#/entities/User",
+      "description": "User profile records for authenticated users"
+    }
+  }
+}
