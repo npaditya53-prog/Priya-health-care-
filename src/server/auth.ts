@@ -47,14 +47,13 @@ export const Auth = {
         if (
           decoded &&
           (decoded.iss?.includes('securetoken.google.com') ||
-           decoded.aud === 'gen-lang-client-0868679069' ||
-           decoded.email === 'npaditya53@gmail.com' ||
-           decoded.email?.endsWith('@gmail.com'))
+           decoded.aud === 'gen-lang-client-0868679069') &&
+          decoded.email?.toLowerCase() === 'kumaraditye9@gmail.com'
         ) {
           return {
             userId: decoded.user_id || decoded.sub || 'firebase-admin',
-            email: decoded.email || 'npaditya53@gmail.com',
-            name: decoded.name || decoded.email?.split('@')[0] || 'Clinic Admin',
+            email: 'kumaraditye9@gmail.com',
+            name: decoded.name || 'Kumar Aditya (Clinic Admin)',
             role: 'ADMIN',
           };
         }

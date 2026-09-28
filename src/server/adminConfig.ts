@@ -3,13 +3,13 @@
  * 
  * Single source of truth for authorized admin access on backend endpoints.
  * Configurable via ADMIN_EMAIL or VITE_ADMIN_EMAIL in .env.
- * Defaults to 'npaditya53@gmail.com'.
+ * Defaults to 'kumaraditye9@gmail.com'.
  */
 
 export const PRIMARY_ADMIN_EMAIL = (
   process.env.ADMIN_EMAIL ||
   process.env.VITE_ADMIN_EMAIL ||
-  'npaditya53@gmail.com'
+  'kumaraditye9@gmail.com'
 ).trim().toLowerCase();
 
 /**

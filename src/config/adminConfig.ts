@@ -3,12 +3,12 @@
  * 
  * Single source of truth for authorized admin access.
  * Configurable via VITE_ADMIN_EMAIL in .env.
- * Defaults to 'npaditya53@gmail.com'.
+ * Defaults to 'kumaraditye9@gmail.com'.
  */
 
 export const PRIMARY_ADMIN_EMAIL = (
   (import.meta.env.VITE_ADMIN_EMAIL as string) ||
-  'npaditya53@gmail.com'
+  'kumaraditye9@gmail.com'
 ).trim().toLowerCase();
 
 /**
