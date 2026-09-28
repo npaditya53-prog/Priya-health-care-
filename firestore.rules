@@ -55,7 +55,8 @@ service cloud.firestore {
              (!('consultation_info' in data) || (data.consultation_info is string && data.consultation_info.size() <= 5000)) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() <= 100)) &&
              (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
-             (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 500000)) &&
+             (!('image_url' in data) || (data.image_url is string && data.image_url.size() <= 1000000)) &&
+             (!('photo_base64' in data) || (data.photo_base64 is string && data.photo_base64.size() <= 1000000)) &&
              (!('is_published' in data) || (data.is_published is bool || data.is_published is int)) &&
              (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 100)) &&
              (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));

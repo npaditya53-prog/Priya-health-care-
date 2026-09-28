@@ -910,7 +910,23 @@ app.get('/api/doctor', async (_req: Request, res: Response) => {
   try {
     const fsDoctor = await getDoctorFromFirestore();
     if (fsDoctor && fsDoctor.name) {
-      doctor = { ...(doctor || {}), ...fsDoctor } as any;
+      const isPlaceholder = (val: any) =>
+        !val ||
+        val === '[ADD VERIFIED INFORMATION]' ||
+        String(val).toLowerCase().includes('pending verification');
+
+      doctor = {
+        ...(doctor || {}),
+        ...fsDoctor,
+        qualifications: !isPlaceholder(fsDoctor.qualifications) ? fsDoctor.qualifications : (doctor?.qualifications && !isPlaceholder(doctor.qualifications) ? doctor.qualifications : ''),
+        experience: !isPlaceholder(fsDoctor.experience) ? fsDoctor.experience : (doctor?.experience && !isPlaceholder(doctor.experience) ? doctor.experience : ''),
+        specialties: !isPlaceholder(fsDoctor.specialties) ? fsDoctor.specialties : (doctor?.specialties && !isPlaceholder(doctor.specialties) ? doctor.specialties : ''),
+        registration: !isPlaceholder(fsDoctor.registration) ? fsDoctor.registration : (doctor?.registration && !isPlaceholder(doctor.registration) ? doctor.registration : ''),
+        consultation_info: !isPlaceholder(fsDoctor.consultation_info) ? fsDoctor.consultation_info : (doctor?.consultation_info && !isPlaceholder(doctor.consultation_info) ? doctor.consultation_info : ''),
+        bio: !isPlaceholder(fsDoctor.bio) ? fsDoctor.bio : (doctor?.bio && !isPlaceholder(doctor.bio) ? doctor.bio : ''),
+        image_url: fsDoctor.image_url || fsDoctor.photo_base64 || doctor?.image_url || '',
+        photo_base64: fsDoctor.photo_base64 || fsDoctor.image_url || doctor?.image_url || '',
+      } as any;
     }
   } catch (e) {
     console.warn('[Server] Firestore doctor fetch notice:', e);
@@ -924,7 +940,23 @@ app.get('/api/admin/doctor', requireAuth, async (_req: AuthenticatedRequest, res
   try {
     const fsDoctor = await getDoctorFromFirestore();
     if (fsDoctor && fsDoctor.name) {
-      doctor = { ...(doctor || {}), ...fsDoctor } as any;
+      const isPlaceholder = (val: any) =>
+        !val ||
+        val === '[ADD VERIFIED INFORMATION]' ||
+        String(val).toLowerCase().includes('pending verification');
+
+      doctor = {
+        ...(doctor || {}),
+        ...fsDoctor,
+        qualifications: !isPlaceholder(fsDoctor.qualifications) ? fsDoctor.qualifications : (doctor?.qualifications && !isPlaceholder(doctor.qualifications) ? doctor.qualifications : ''),
+        experience: !isPlaceholder(fsDoctor.experience) ? fsDoctor.experience : (doctor?.experience && !isPlaceholder(doctor.experience) ? doctor.experience : ''),
+        specialties: !isPlaceholder(fsDoctor.specialties) ? fsDoctor.specialties : (doctor?.specialties && !isPlaceholder(doctor.specialties) ? doctor.specialties : ''),
+        registration: !isPlaceholder(fsDoctor.registration) ? fsDoctor.registration : (doctor?.registration && !isPlaceholder(doctor.registration) ? doctor.registration : ''),
+        consultation_info: !isPlaceholder(fsDoctor.consultation_info) ? fsDoctor.consultation_info : (doctor?.consultation_info && !isPlaceholder(doctor.consultation_info) ? doctor.consultation_info : ''),
+        bio: !isPlaceholder(fsDoctor.bio) ? fsDoctor.bio : (doctor?.bio && !isPlaceholder(doctor.bio) ? doctor.bio : ''),
+        image_url: fsDoctor.image_url || fsDoctor.photo_base64 || doctor?.image_url || '',
+        photo_base64: fsDoctor.photo_base64 || fsDoctor.image_url || doctor?.image_url || '',
+      } as any;
     }
   } catch (e) {
     console.warn('[Server] Admin Firestore doctor fetch notice:', e);
@@ -942,6 +974,8 @@ const handleDoctorUpdate = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const data = parse.data;
+  const photoVal = (data.image_url ?? data.imageUrl ?? data.photo_base64) ?? undefined;
+
   const updated = await DoctorRepository.update({
     name: data.name,
     designation: data.designation,
@@ -952,7 +986,8 @@ const handleDoctorUpdate = async (req: AuthenticatedRequest, res: Response) => {
     registration: data.registration ?? undefined,
     consultation_info: (data.consultation_info ?? data.consultationInfo) ?? undefined,
     is_published: data.is_published !== undefined ? (Number(data.is_published) ? 1 : 0) : (data.isPublished !== undefined ? (data.isPublished ? 1 : 0) : undefined),
-    image_url: (data.image_url ?? data.imageUrl) ?? undefined,
+    image_url: photoVal,
+    photo_base64: photoVal,
     phone: data.phone ?? undefined,
     email: data.email ?? undefined,
   });

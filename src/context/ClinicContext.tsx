@@ -54,17 +54,30 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (clinicRes.success && clinicRes.data) setClinic(clinicRes.data);
       if (doctorRes.success && doctorRes.data) {
-        // Only set if not already loaded from canonical real-time Firestore
-        if (!firestoreDoctorLoadedRef.current) {
-          setDoctor((prev) => {
-            if (!doctorRes.data) return prev || null;
-            // If prev has non-placeholder qualifications from Firestore/cache, keep them
-            if (prev && prev.qualifications && prev.qualifications !== '[ADD VERIFIED INFORMATION]') {
-              return { ...doctorRes.data, ...prev };
-            }
-            return doctorRes.data;
-          });
-        }
+        const d = doctorRes.data;
+        const cleanDoctor: DoctorData = {
+          ...d,
+          bio: d.bio && d.bio !== '[ADD VERIFIED INFORMATION]' ? d.bio : '',
+          qualifications: d.qualifications && d.qualifications !== '[ADD VERIFIED INFORMATION]' ? d.qualifications : '',
+          experience: d.experience && d.experience !== '[ADD VERIFIED INFORMATION]' ? d.experience : '',
+          specialties: d.specialties && d.specialties !== '[ADD VERIFIED INFORMATION]' ? d.specialties : '',
+          registration: d.registration && d.registration !== '[ADD VERIFIED INFORMATION]' ? d.registration : '',
+          consultation_info: d.consultation_info && d.consultation_info !== '[ADD VERIFIED INFORMATION]' ? d.consultation_info : '',
+          image_url: d.image_url || d.photo_base64 || '',
+          photo_base64: d.photo_base64 || d.image_url || '',
+          phone: d.phone && d.phone !== '[ADD VERIFIED INFORMATION]' ? d.phone : '',
+          email: d.email && d.email !== '[ADD VERIFIED INFORMATION]' ? d.email : '',
+        };
+
+        setDoctor((prev) => {
+          if (!prev) return cleanDoctor;
+          return {
+            ...cleanDoctor,
+            ...prev,
+            qualifications: prev.qualifications || cleanDoctor.qualifications,
+            image_url: prev.image_url || cleanDoctor.image_url,
+          };
+        });
       }
       if (settingsRes.success && settingsRes.data) setSettings(settingsRes.data);
       if (servicesRes.success && servicesRes.data) setServices(servicesRes.data);
@@ -88,21 +101,22 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id: 'doctor-gultun-paswan',
             name: data.name || 'Dr. Gultun Paswan',
             designation: data.designation || 'Lead Consulting Physician',
-            bio: data.bio || '',
-            qualifications: data.qualifications || '',
-            experience: data.experience || '',
-            specialties: data.specialties || '',
-            registration: data.registration || '',
-            consultation_info: data.consultation_info || '',
+            bio: data.bio && data.bio !== '[ADD VERIFIED INFORMATION]' ? data.bio : '',
+            qualifications: data.qualifications && data.qualifications !== '[ADD VERIFIED INFORMATION]' ? data.qualifications : '',
+            experience: data.experience && data.experience !== '[ADD VERIFIED INFORMATION]' ? data.experience : '',
+            specialties: data.specialties && data.specialties !== '[ADD VERIFIED INFORMATION]' ? data.specialties : '',
+            registration: data.registration && data.registration !== '[ADD VERIFIED INFORMATION]' ? data.registration : '',
+            consultation_info: data.consultation_info && data.consultation_info !== '[ADD VERIFIED INFORMATION]' ? data.consultation_info : '',
             is_published:
               data.is_published !== undefined
                 ? typeof data.is_published === 'boolean'
                   ? (data.is_published ? 1 : 0)
                   : Number(data.is_published)
                 : 1,
-            image_url: data.image_url || '',
-            phone: data.phone || '',
-            email: data.email || '',
+            image_url: data.image_url || (data as any).photo_base64 || '',
+            photo_base64: (data as any).photo_base64 || data.image_url || '',
+            phone: data.phone && data.phone !== '[ADD VERIFIED INFORMATION]' ? data.phone : '',
+            email: data.email && data.email !== '[ADD VERIFIED INFORMATION]' ? data.email : '',
             created_at: '',
             updated_at: data.updatedAt || new Date().toISOString(),
           };

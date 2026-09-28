@@ -334,6 +334,7 @@ export async function syncDoctorDocumentToFirestore(data: {
   consultation_info?: string | null;
   is_published?: number | boolean | null;
   image_url?: string | null;
+  photo_base64?: string | null;
   phone?: string | null;
   email?: string | null;
 }) {
@@ -360,34 +361,40 @@ export async function syncDoctorDocumentToFirestore(data: {
     }
 
     const isPlaceholder = (val: any) =>
-      !val ||
+      val === undefined ||
+      val === null ||
       val === '[ADD VERIFIED INFORMATION]' ||
       String(val).toLowerCase().includes('pending verification');
 
-    const pickBest = (incomingVal: any, existingVal: any, fallback: string = '') => {
-      if (incomingVal !== undefined && incomingVal !== null && !isPlaceholder(incomingVal)) {
+    const cleanField = (incomingVal: any, existingVal: any, fallback: string = '') => {
+      // 1. If incoming value is explicitly provided and not a placeholder, use it (even if empty string)
+      if (incomingVal !== undefined && incomingVal !== null && incomingVal !== '[ADD VERIFIED INFORMATION]') {
         return String(incomingVal).trim();
       }
+      // 2. If incoming is omitted or placeholder, use existing real value if available
       if (existingVal !== undefined && existingVal !== null && !isPlaceholder(existingVal)) {
         return String(existingVal).trim();
       }
-      return incomingVal !== undefined && incomingVal !== null ? String(incomingVal).trim() : fallback;
+      return fallback;
     };
+
+    const photoVal = cleanField(data.image_url, existingDoc?.image_url, '');
 
     const payload = {
       id: 'doctor-gultun-paswan',
-      name: pickBest(data.name, existingDoc?.name, 'Dr. Gultun Paswan'),
-      designation: pickBest(data.designation, existingDoc?.designation, 'Lead Consulting Physician'),
-      bio: pickBest(data.bio, existingDoc?.bio, ''),
-      qualifications: pickBest(data.qualifications, existingDoc?.qualifications, ''),
-      experience: pickBest(data.experience, existingDoc?.experience, ''),
-      specialties: pickBest(data.specialties, existingDoc?.specialties, ''),
-      registration: pickBest(data.registration, existingDoc?.registration, ''),
-      consultation_info: pickBest(data.consultation_info, existingDoc?.consultation_info, ''),
+      name: cleanField(data.name, existingDoc?.name, 'Dr. Gultun Paswan'),
+      designation: cleanField(data.designation, existingDoc?.designation, 'Lead Consulting Physician'),
+      bio: cleanField(data.bio, existingDoc?.bio, ''),
+      qualifications: cleanField(data.qualifications, existingDoc?.qualifications, ''),
+      experience: cleanField(data.experience, existingDoc?.experience, ''),
+      specialties: cleanField(data.specialties, existingDoc?.specialties, ''),
+      registration: cleanField(data.registration, existingDoc?.registration, ''),
+      consultation_info: cleanField(data.consultation_info, existingDoc?.consultation_info, ''),
       is_published: isPublishedBool,
-      image_url: pickBest(data.image_url, existingDoc?.image_url, ''),
-      phone: pickBest(data.phone, existingDoc?.phone, ''),
-      email: pickBest(data.email, existingDoc?.email, ''),
+      image_url: photoVal,
+      photo_base64: photoVal,
+      phone: cleanField(data.phone, existingDoc?.phone, ''),
+      email: cleanField(data.email, existingDoc?.email, ''),
       updatedAt: new Date().toISOString(),
     };
 

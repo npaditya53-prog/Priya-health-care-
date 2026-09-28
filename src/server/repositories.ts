@@ -37,6 +37,7 @@ export interface Doctor {
   consultation_info?: string | null;
   is_published?: number;
   image_url: string | null;
+  photo_base64?: string | null;
   phone: string | null;
   email: string | null;
   created_at: string;
@@ -474,6 +475,13 @@ export const DoctorRepository = {
     const current = this.get();
     const now = new Date().toISOString();
 
+    const photoUrl =
+      data.image_url !== undefined
+        ? data.image_url
+        : data.photo_base64 !== undefined
+        ? data.photo_base64
+        : current.image_url;
+
     sqlite.prepare(`
       UPDATE doctor SET
         name = ?, designation = ?, bio = ?, qualifications = ?, experience = ?,
@@ -483,14 +491,14 @@ export const DoctorRepository = {
     `).run(
       data.name ?? current.name,
       data.designation ?? current.designation,
-      data.bio ?? current.bio,
-      data.qualifications ?? current.qualifications,
-      data.experience ?? current.experience,
-      data.specialties ?? current.specialties,
-      data.registration !== undefined ? data.registration : (current.registration ?? '[ADD VERIFIED INFORMATION]'),
-      data.consultation_info !== undefined ? data.consultation_info : (current.consultation_info ?? '[ADD VERIFIED INFORMATION]'),
+      data.bio !== undefined ? data.bio : current.bio,
+      data.qualifications !== undefined ? data.qualifications : current.qualifications,
+      data.experience !== undefined ? data.experience : current.experience,
+      data.specialties !== undefined ? data.specialties : current.specialties,
+      data.registration !== undefined ? data.registration : (current.registration || ''),
+      data.consultation_info !== undefined ? data.consultation_info : (current.consultation_info || ''),
       data.is_published !== undefined ? (data.is_published ? 1 : 0) : (current.is_published ?? 1),
-      data.image_url !== undefined ? data.image_url : current.image_url,
+      photoUrl,
       data.phone !== undefined ? data.phone : current.phone,
       data.email !== undefined ? data.email : current.email,
       now,
@@ -512,6 +520,7 @@ export const DoctorRepository = {
         consultation_info: updated.consultation_info,
         is_published: updated.is_published,
         image_url: updated.image_url,
+        photo_base64: updated.image_url,
         phone: updated.phone,
         email: updated.email,
       });

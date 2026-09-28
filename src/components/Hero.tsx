@@ -55,8 +55,16 @@ export const Hero: React.FC = () => {
               aria-label="View Dr. Gultun Paswan profile"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold group-hover:bg-sky-200 transition-colors shrink-0">
-                  <UserCheck className="w-5 h-5 text-sky-700" />
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-sky-100 text-sky-800 flex items-center justify-center font-bold group-hover:bg-sky-200 transition-colors shrink-0 border border-sky-200">
+                  {doctor?.image_url ? (
+                    <img
+                      src={doctor.image_url}
+                      alt={doctor.name || 'Dr. Gultun Paswan'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <UserCheck className="w-5 h-5 text-sky-700" />
+                  )}
                 </div>
                 <div className="text-left">
                   <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -146,8 +154,16 @@ export const Hero: React.FC = () => {
                 {/* Doctor Section inside Portal Card */}
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0 mt-0.5">
-                      <Stethoscope className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 shrink-0 mt-0.5">
+                      {doctor?.image_url ? (
+                        <img
+                          src={doctor.image_url}
+                          alt={doctor.name || 'Dr. Gultun Paswan'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Stethoscope className="w-5 h-5" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">

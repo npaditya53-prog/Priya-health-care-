@@ -90,10 +90,34 @@ export const DoctorProfilePage: React.FC = () => {
       // ignore
     }
 
-    return {
+    const cleanField = (...candidates: any[]) => {
+      for (const c of candidates) {
+        if (c && typeof c === 'string' && c.trim() && c.trim() !== '[ADD VERIFIED INFORMATION]') {
+          return c.trim();
+        }
+      }
+      return '';
+    };
+
+    const merged = {
       ...(cachedDoctor || {}),
       ...(contextDoctor || {}),
       ...(firestoreDoctor || {}),
+    };
+
+    return {
+      ...merged,
+      name: cleanField(firestoreDoctor?.name, contextDoctor?.name, cachedDoctor?.name, 'Dr. Gultun Paswan'),
+      designation: cleanField(firestoreDoctor?.designation, contextDoctor?.designation, cachedDoctor?.designation, 'Lead Consulting Physician'),
+      qualifications: cleanField(firestoreDoctor?.qualifications, contextDoctor?.qualifications, cachedDoctor?.qualifications),
+      experience: cleanField(firestoreDoctor?.experience, contextDoctor?.experience, cachedDoctor?.experience),
+      specialties: cleanField(firestoreDoctor?.specialties, contextDoctor?.specialties, cachedDoctor?.specialties),
+      registration: cleanField(firestoreDoctor?.registration, contextDoctor?.registration, cachedDoctor?.registration),
+      consultation_info: cleanField(firestoreDoctor?.consultation_info, contextDoctor?.consultation_info, cachedDoctor?.consultation_info),
+      bio: cleanField(firestoreDoctor?.bio, contextDoctor?.bio, cachedDoctor?.bio),
+      image_url: cleanField(firestoreDoctor?.image_url, (firestoreDoctor as any)?.photo_base64, contextDoctor?.image_url, cachedDoctor?.image_url),
+      phone: cleanField(firestoreDoctor?.phone, contextDoctor?.phone, cachedDoctor?.phone),
+      email: cleanField(firestoreDoctor?.email, contextDoctor?.email, cachedDoctor?.email),
     };
   }, [firestoreDoctor, contextDoctor]);
 

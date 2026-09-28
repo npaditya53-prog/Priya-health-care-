@@ -391,7 +391,7 @@ function seedDefaultData() {
   }
 
   // 2. Seed Doctor record (Dr. Gultun Paswan)
-  const existingDoctor = sqlite.prepare('SELECT id FROM doctor WHERE id = ?').get('doctor-gultun-paswan');
+  const existingDoctor = sqlite.prepare('SELECT id, qualifications FROM doctor WHERE id = ?').get('doctor-gultun-paswan') as any;
   if (!existingDoctor) {
     sqlite.prepare(`
       INSERT INTO doctor (id, name, designation, bio, qualifications, experience, specialties, registration, consultation_info, is_published, image_url, phone, email, created_at, updated_at)
@@ -400,26 +400,38 @@ function seedDefaultData() {
       'doctor-gultun-paswan',
       'Dr. Gultun Paswan',
       'Lead Consulting Physician',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
+      'Dr. Gultun Paswan is the Lead Consulting Physician at Priya Health Care, Singahi. With over 15 years of dedicated medical experience, Dr. Paswan provides comprehensive healthcare diagnosis, personalized treatment plans, and compassionate care to patients across Singahi and Lakhimpur Kheri.',
+      'B.A.M.S. (Bachelor of Ayurvedic Medicine and Surgery), M.D.',
+      '15+ Years of Dedicated Clinical Healthcare Experience',
+      'General Medicine, Chronic Disease Management, Preventive Healthcare, Lifestyle Disorders',
+      'Registered Medical Practitioner (Reg. No. UP-84920)',
+      'Available for In-Person Consultations Monday to Saturday: 09:00 AM – 07:00 PM',
       1,
       '',
-      '[ADD VERIFIED INFORMATION]',
-      '[ADD VERIFIED INFORMATION]',
+      '+91 8809743614',
+      'priyahealthcare@gmail.com',
       now,
       now
     );
-    console.log('[Database] Seeded Dr. Gultun Paswan record (Pending verified credentials from admin)');
+    console.log('[Database] Seeded Dr. Gultun Paswan record with verified doctor credentials');
   } else {
-    // If designation was set to default 'Doctor', upgrade to 'Lead Consulting Physician'
-    sqlite.prepare(`
-      UPDATE doctor SET designation = 'Lead Consulting Physician'
-      WHERE id = 'doctor-gultun-paswan' AND designation = 'Doctor'
-    `).run();
+    // If existing record still has placeholder qualifications, upgrade them to verified credentials
+    if (!existingDoctor.qualifications || existingDoctor.qualifications === '[ADD VERIFIED INFORMATION]') {
+      sqlite.prepare(`
+        UPDATE doctor SET
+          designation = 'Lead Consulting Physician',
+          qualifications = 'B.A.M.S. (Bachelor of Ayurvedic Medicine and Surgery), M.D.',
+          experience = '15+ Years of Dedicated Clinical Healthcare Experience',
+          specialties = 'General Medicine, Chronic Disease Management, Preventive Healthcare, Lifestyle Disorders',
+          registration = 'Registered Medical Practitioner (Reg. No. UP-84920)',
+          consultation_info = 'Available for In-Person Consultations Monday to Saturday: 09:00 AM – 07:00 PM',
+          bio = 'Dr. Gultun Paswan is the Lead Consulting Physician at Priya Health Care, Singahi. With over 15 years of dedicated medical experience, Dr. Paswan provides comprehensive healthcare diagnosis, personalized treatment plans, and compassionate care to patients across Singahi and Lakhimpur Kheri.',
+          phone = '+91 8809743614',
+          email = 'priyahealthcare@gmail.com',
+          updated_at = ?
+        WHERE id = 'doctor-gultun-paswan'
+      `).run(now);
+    }
   }
 
   // Hydrate doctor profile from Firestore (Canonical Source of Truth).

@@ -174,85 +174,121 @@ export async function optimizeDoctorPhoto(file: File): Promise<{
 }
 
 /**
- * Uploads a doctor profile photo with resilient multi-tier caching and storage.
- * 1. Optimizes the photo client-side into lightweight WebP/JPEG (never throws, always succeeds).
- * 2. Attempts upload to local backend server /api/upload (fastest, standard storage).
- * 3. Attempts Firebase Storage upload with versioned name if available.
- * 4. Guaranteed fallback to optimized data URI directly (~30KB),
- *    so the photo is immediately usable and stored in Firestore.
+ * Converts an image file to an optimized, lightweight Base64 Data URL
+ * suitable for direct persistence in Firebase Firestore documents.
+ * 
+ * - Resizes proportionally to max 600x600 pixels (crisp portrait avatar)
+ * - Encodes as WebP (or JPEG fallback) at 0.82 quality
+ * - Typical result is 30KB - 70KB base64, well under Firestore's 1MB document limit
+ * - Completely client-side, instant, zero network dependencies, 100% reliable
+ */
+export async function convertImageToBase64(file: File): Promise<{
+  base64: string;
+  sizeInKb: number;
+  width: number;
+  height: number;
+}> {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      return reject(new Error('Please select a valid image file (JPG, PNG, WebP).'));
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.onload = () => {
+      const rawDataUrl = reader.result as string;
+      const img = new Image();
+      img.onerror = () => {
+        // If image object fails to decode, fallback to raw reader dataUrl
+        const approxKb = Math.round(rawDataUrl.length * 0.75 / 1024);
+        resolve({
+          base64: rawDataUrl,
+          sizeInKb: approxKb,
+          width: 400,
+          height: 400,
+        });
+      };
+
+      img.onload = () => {
+        try {
+          const maxDim = 600;
+          let width = img.naturalWidth || img.width || 600;
+          let height = img.naturalHeight || img.height || 600;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            const approxKb = Math.round(rawDataUrl.length * 0.75 / 1024);
+            return resolve({
+              base64: rawDataUrl,
+              sizeInKb: approxKb,
+              width,
+              height,
+            });
+          }
+
+          // Crisp rendering
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Try WebP first for optimal compression
+          let base64 = canvas.toDataURL('image/webp', 0.82);
+          if (!base64.startsWith('data:image/webp')) {
+            base64 = canvas.toDataURL('image/jpeg', 0.82);
+          }
+
+          const approxKb = Math.round(base64.length * 0.75 / 1024);
+          resolve({
+            base64,
+            sizeInKb: approxKb,
+            width,
+            height,
+          });
+        } catch (canvasErr) {
+          console.warn('[convertImageToBase64] Canvas compression notice, using raw base64:', canvasErr);
+          const approxKb = Math.round(rawDataUrl.length * 0.75 / 1024);
+          resolve({
+            base64: rawDataUrl,
+            sizeInKb: approxKb,
+            width: 400,
+            height: 400,
+          });
+        }
+      };
+
+      img.src = rawDataUrl;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Uploads doctor profile photo as an optimized Base64 string for direct Firestore persistence.
  */
 export async function uploadDoctorPhoto(file: File): Promise<{
   url: string;
-  source: 'backend_server' | 'firebase_storage' | 'optimized_data_uri';
+  source: 'base64_firestore';
+  sizeInKb: number;
 }> {
-  // Step 1: Optimize photo client-side
-  let blob: Blob = file;
-  let dataUrl = '';
-
-  try {
-    const res = await optimizeDoctorPhoto(file);
-    blob = res.blob;
-    dataUrl = res.dataUrl;
-  } catch (err) {
-    console.warn('[PhotoUpload] Client optimization error:', err);
-  }
-
-  // Step 2: Try backend server upload first (instant local endpoint)
-  try {
-    // Wrap blob into a File if needed
-    const uploadableFile =
-      blob instanceof File
-        ? blob
-        : new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.webp', {
-            type: blob.type || 'image/webp',
-          });
-
-    const serverRes = await api.uploadFile(uploadableFile);
-    if (serverRes.success && serverRes.data?.url) {
-      console.log('[PhotoUpload] Successfully uploaded to backend server:', serverRes.data.url);
-      return { url: serverRes.data.url, source: 'backend_server' };
-    }
-  } catch (serverErr) {
-    console.warn('[PhotoUpload] Backend upload notice, checking fallbacks:', serverErr);
-  }
-
-  // Step 3: Attempt Firebase Storage upload with a fast 2.5s timeout
-  try {
-    const storage = getStorage(db.app);
-    const versionedName = `doctor-profile/profile-v${Date.now()}.webp`;
-    const storageRef = ref(storage, versionedName);
-
-    const uploadPromise = uploadBytes(storageRef, blob, {
-      contentType: blob.type || 'image/webp',
-      cacheControl: 'public, max-age=31536000, immutable',
-    });
-
-    const timeoutPromise = new Promise<never>((_, rej) =>
-      setTimeout(() => rej(new Error('Firebase Storage timeout')), 2500)
-    );
-
-    await Promise.race([uploadPromise, timeoutPromise]);
-    const downloadUrl = await getDownloadURL(storageRef);
-    console.log('[PhotoUpload] Uploaded to Firebase Storage:', downloadUrl);
-    return { url: downloadUrl, source: 'firebase_storage' };
-  } catch (storageErr: any) {
-    console.warn('[PhotoUpload] Firebase Storage notice:', storageErr?.message || storageErr);
-  }
-
-  // Step 4: Guaranteed fallback to optimized data URI
-  // Firestore rules allow up to 500,000 characters for image_url
-  if (dataUrl && dataUrl.length > 20) {
-    console.log('[PhotoUpload] Using optimized data URI fallback (guaranteed display & Firestore sync)');
-    return { url: dataUrl, source: 'optimized_data_uri' };
-  }
-
-  // Final fallback: read raw file as data URL
-  const rawDataUrl = await new Promise<string>((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.onerror = () => rej(new Error('Could not read image file'));
-    r.readAsDataURL(file);
-  });
-
-  return { url: rawDataUrl, source: 'optimized_data_uri' };
+  const { base64, sizeInKb } = await convertImageToBase64(file);
+  return {
+    url: base64,
+    source: 'base64_firestore',
+    sizeInKb,
+  };
 }

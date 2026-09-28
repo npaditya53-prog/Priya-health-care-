@@ -19,17 +19,19 @@ export const DoctorProfileCard: React.FC<{ compact?: boolean }> = ({ compact = f
   const [imageError, setImageError] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
 
+  const effectivePhoto = doctor?.image_url || doctor?.photo_base64;
+
   React.useEffect(() => {
     setImageError(false);
     setImageLoaded(false);
-  }, [doctor?.image_url]);
+  }, [effectivePhoto]);
 
   const bioVerified = isVerified(doctor?.bio);
   const qualVerified = isVerified(doctor?.qualifications);
   const expVerified = isVerified(doctor?.experience);
   const specVerified = isVerified(doctor?.specialties);
   const phoneVerified = isVerified(doctor?.phone);
-  const photoVerified = isVerified(doctor?.image_url);
+  const photoVerified = isVerified(effectivePhoto);
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
@@ -46,7 +48,7 @@ export const DoctorProfileCard: React.FC<{ compact?: boolean }> = ({ compact = f
                     </div>
                   )}
                   <img
-                    src={doctor?.image_url!}
+                    src={effectivePhoto!}
                     alt={doctor?.name || 'Dr. Gultun Paswan'}
                     className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                     onLoad={() => setImageLoaded(true)}

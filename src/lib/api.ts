@@ -19,6 +19,7 @@ export interface DoctorData {
   consultation_info?: string | null;
   is_published?: number | boolean;
   image_url: string | null;
+  photo_base64?: string | null;
   phone: string | null;
   email: string | null;
   created_at: string;

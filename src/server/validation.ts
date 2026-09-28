@@ -52,8 +52,9 @@ export const DoctorUpdateSchema = z.object({
   consultation_info: z.string().max(2000).optional().nullable().or(z.literal('')),
   isPublished: z.union([z.boolean(), z.number()]).optional(),
   is_published: z.union([z.boolean(), z.number()]).optional(),
-  imageUrl: z.string().max(500000).optional().nullable(),
-  image_url: z.string().max(500000).optional().nullable(),
+  imageUrl: z.string().max(1000000).optional().nullable(),
+  image_url: z.string().max(1000000).optional().nullable(),
+  photo_base64: z.string().max(1000000).optional().nullable(),
   phone: z.string().max(100).optional().nullable(),
   email: z.string().max(200).optional().nullable(),
 });

@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   ArrowRight,
   Building2,
+  Stethoscope,
 } from 'lucide-react';
 import { Hero } from '../components/Hero';
+import { DoctorProfileCard } from '../components/DoctorProfileCard';
 import { useClinic } from '../context/ClinicContext';
 
 export const HomePage: React.FC = () => {
@@ -100,6 +102,14 @@ export const HomePage: React.FC = () => {
                   {doctor?.name || 'Dr. Gultun Paswan'}
                 </span>
               </div>
+              {doctor?.qualifications && (
+                <div className="py-2.5 flex items-center justify-between gap-4">
+                  <span className="text-slate-500">Qualifications:</span>
+                  <span className="font-semibold text-cyan-800 text-right text-xs">
+                    {doctor.qualifications}
+                  </span>
+                </div>
+              )}
               <div className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
                 <span className="text-slate-500">Working Schedule:</span>
                 <span className="font-bold text-slate-900 text-left sm:text-right">
@@ -124,6 +134,35 @@ export const HomePage: React.FC = () => {
               <strong className="font-bold text-slate-900">Need medical advice?</strong> Request a consultation online or call the clinic during operating hours.
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 2.5 Doctor Profile Spotlight Section */}
+      <section className="py-12 sm:py-16 bg-slate-100/60 border-b border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 border border-sky-200 text-sky-900 text-xs font-bold uppercase tracking-wide mb-2">
+                <Stethoscope className="w-3.5 h-3.5 text-cyan-700" />
+                <span>CONSULTING PHYSICIAN</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight">
+                Meet Dr. Gultun Paswan
+              </h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Lead Consulting Physician at Priya Health Care, Singahi
+              </p>
+            </div>
+            <Link
+              to="/doctor/dr-gultun-paswan"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-800 hover:text-sky-900 transition-colors"
+            >
+              <span>View Full Biography & Credentials</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <DoctorProfileCard compact={true} />
         </div>
       </section>
 

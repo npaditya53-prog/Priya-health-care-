@@ -66,7 +66,16 @@ export const AdminDoctorPage: React.FC = () => {
           if (isEditingRef.current) return prev;
           return {
             ...docData,
+            bio: docData.bio && docData.bio !== '[ADD VERIFIED INFORMATION]' ? docData.bio : '',
+            qualifications: docData.qualifications && docData.qualifications !== '[ADD VERIFIED INFORMATION]' ? docData.qualifications : '',
+            experience: docData.experience && docData.experience !== '[ADD VERIFIED INFORMATION]' ? docData.experience : '',
+            specialties: docData.specialties && docData.specialties !== '[ADD VERIFIED INFORMATION]' ? docData.specialties : '',
+            registration: docData.registration && docData.registration !== '[ADD VERIFIED INFORMATION]' ? docData.registration : '',
+            consultation_info: docData.consultation_info && docData.consultation_info !== '[ADD VERIFIED INFORMATION]' ? docData.consultation_info : '',
             is_published: docData.is_published !== undefined ? Number(docData.is_published) : 1,
+            image_url: docData.image_url || (docData as any).photo_base64 || '',
+            phone: docData.phone && docData.phone !== '[ADD VERIFIED INFORMATION]' ? docData.phone : '',
+            email: docData.email && docData.email !== '[ADD VERIFIED INFORMATION]' ? docData.email : '',
           };
         });
       }
@@ -86,21 +95,21 @@ export const AdminDoctorPage: React.FC = () => {
           setFormData({
             name: data.name || 'Dr. Gultun Paswan',
             designation: data.designation || 'Lead Consulting Physician',
-            bio: data.bio !== undefined ? data.bio : '',
-            qualifications: data.qualifications !== undefined ? data.qualifications : '',
-            experience: data.experience !== undefined ? data.experience : '',
-            specialties: data.specialties !== undefined ? data.specialties : '',
-            registration: data.registration !== undefined ? data.registration : '',
-            consultation_info: data.consultation_info !== undefined ? data.consultation_info : '',
+            bio: data.bio && data.bio !== '[ADD VERIFIED INFORMATION]' ? data.bio : '',
+            qualifications: data.qualifications && data.qualifications !== '[ADD VERIFIED INFORMATION]' ? data.qualifications : '',
+            experience: data.experience && data.experience !== '[ADD VERIFIED INFORMATION]' ? data.experience : '',
+            specialties: data.specialties && data.specialties !== '[ADD VERIFIED INFORMATION]' ? data.specialties : '',
+            registration: data.registration && data.registration !== '[ADD VERIFIED INFORMATION]' ? data.registration : '',
+            consultation_info: data.consultation_info && data.consultation_info !== '[ADD VERIFIED INFORMATION]' ? data.consultation_info : '',
             is_published:
               data.is_published !== undefined
                 ? typeof data.is_published === 'boolean'
                   ? (data.is_published ? 1 : 0)
                   : Number(data.is_published)
                 : 1,
-            image_url: data.image_url !== undefined ? data.image_url : '',
-            phone: data.phone !== undefined ? data.phone : '',
-            email: data.email !== undefined ? data.email : '',
+            image_url: data.image_url || (data as any).photo_base64 || '',
+            phone: data.phone && data.phone !== '[ADD VERIFIED INFORMATION]' ? data.phone : '',
+            email: data.email && data.email !== '[ADD VERIFIED INFORMATION]' ? data.email : '',
           });
         }
       }
@@ -129,11 +138,11 @@ export const AdminDoctorPage: React.FC = () => {
     isEditingRef.current = true;
 
     try {
-      const { url } = await uploadDoctorPhoto(file);
-      setFormData((prev) => ({ ...prev, image_url: url }));
+      const res = await uploadDoctorPhoto(file);
+      setFormData((prev) => ({ ...prev, image_url: res.url, photo_base64: res.url }));
       setFeedback({
         type: 'success',
-        message: 'Doctor portrait uploaded successfully! Click "Save Changes" below to publish to the website.',
+        message: `Doctor portrait converted to Base64 (${res.sizeInKb} KB)! Click "Save Changes" below to permanently sync to Firebase Firestore.`,
       });
     } catch (err: any) {
       console.error('Doctor photo upload error:', err);
@@ -148,10 +157,10 @@ export const AdminDoctorPage: React.FC = () => {
 
   const handleRemovePhoto = () => {
     isEditingRef.current = true;
-    setFormData((prev) => ({ ...prev, image_url: '' }));
+    setFormData((prev) => ({ ...prev, image_url: '', photo_base64: '' }));
     setFeedback({
       type: 'success',
-      message: 'Doctor portrait removed. Remember to click "Save Changes".',
+      message: 'Doctor portrait removed. Remember to click "Save Changes" to update Firestore.',
     });
   };
 
@@ -183,6 +192,7 @@ export const AdminDoctorPage: React.FC = () => {
       consultation_info: formData.consultation_info || '',
       is_published: Boolean(formData.is_published),
       image_url: formData.image_url || '',
+      photo_base64: formData.image_url || '',
       phone: formData.phone || '',
       email: formData.email || '',
     };
@@ -229,7 +239,7 @@ export const AdminDoctorPage: React.FC = () => {
       isEditingRef.current = false;
       setFeedback({
         type: 'success',
-        message: 'Doctor profile and qualifications saved permanently to Firestore! Real-time sync updated across the entire website.',
+        message: 'Doctor profile, qualifications, and Base64 photo saved permanently to Firebase Firestore! Live across all components on the website.',
       });
       await reloadAll();
     } catch (err: any) {
@@ -309,32 +319,49 @@ export const AdminDoctorPage: React.FC = () => {
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xs">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Doctor Portrait Upload */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-              Profile Photo
-            </label>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Doctor Profile Photo (Firebase Firestore Base64 Storage)
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Uploaded portraits are encoded as lightweight Base64 and stored directly in Firebase Firestore. Updates instantaneously across every component on the website.
+                </p>
+              </div>
+              {formData.image_url && formData.image_url.startsWith('data:') && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Base64 Firestore Encoded
+                </span>
+              )}
+            </div>
+
             <div className="flex flex-wrap items-center gap-6">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 border-2 border-slate-200 flex items-center justify-center relative shadow-inner">
+              <div className="relative w-28 h-28 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-800 to-slate-900 border-2 border-slate-200 flex items-center justify-center shadow-sm">
                 {formData.image_url ? (
                   <img
                     src={formData.image_url}
-                    alt="Dr. Gultun Paswan"
+                    alt={formData.name || 'Doctor Portrait'}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <User className="w-10 h-10 text-slate-400" />
+                  <div className="flex flex-col items-center justify-center text-sky-200">
+                    <User className="w-12 h-12 text-sky-300 mb-1" />
+                    <span className="text-[10px] text-slate-300 font-semibold">No Photo</span>
+                  </div>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer transition-colors border border-slate-200">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-800 hover:bg-sky-900 text-white font-semibold text-xs cursor-pointer transition-colors shadow-xs">
                     {uploading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-700" />
+                      <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
                     ) : (
-                      <Upload className="w-3.5 h-3.5" />
+                      <Upload className="w-4 h-4 text-cyan-300" />
                     )}
-                    <span>{uploading ? 'Processing Image...' : 'Upload Doctor Photo'}</span>
+                    <span>{uploading ? 'Processing Image...' : formData.image_url ? 'Change Doctor Photo' : 'Add Doctor Photo'}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -348,16 +375,18 @@ export const AdminDoctorPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Remove</span>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove Photo</span>
                     </button>
                   )}
                 </div>
-                <span className="block text-[11px] text-slate-400">
-                  JPG, PNG, or WebP. Max 5MB. Verified authentic portrait only.
-                </span>
+
+                <div className="text-[11px] text-slate-500 space-y-0.5">
+                  <p>• Supports JPG, PNG, WebP (automatically optimized and converted to Base64).</p>
+                  <p>• Stored persistently in Firebase Firestore doc <code className="bg-slate-200/80 px-1 py-0.5 rounded text-[10px]">/doctor/doctor-gultun-paswan</code>.</p>
+                </div>
               </div>
             </div>
           </div>
